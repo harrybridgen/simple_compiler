@@ -1,0 +1,29 @@
+use std::fs;
+
+use simple_parser::compiler::compile;
+use simple_parser::compiler::label_gen;
+use simple_parser::grammar::Instruction;
+use simple_parser::parser::parse;
+use simple_parser::tokenizer::tokenize;
+use simple_parser::vm::VM;
+
+fn main() {
+    let file_path = String::from("programs/test.mt");
+
+    let input = fs::read_to_string(file_path).expect("Could not read file");
+    //println!("{:?}", input);
+
+    let tokens = tokenize(&input);
+    println!("{:?}", tokens);
+
+    let ast = parse(tokens);
+    println!("{:#?}", ast);
+
+    let mut byte_code: Vec<Instruction> = Vec::new();
+    let mut label_gen = label_gen::new();
+    compile(ast, &mut byte_code, &mut label_gen);
+    println!("{:?}", byte_code);
+
+    let mut vm = VM::new(byte_code);
+    vm.run();
+}

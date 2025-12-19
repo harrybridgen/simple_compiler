@@ -1,0 +1,217 @@
+use crate::grammar::{AST, Oper, Token};
+
+struct Parser {
+    tokens: Vec<Token>,
+    index: usize,
+}
+
+impl Parser {
+    fn new(tokens: Vec<Token>) -> Self {
+        Parser { tokens, index: 0 }
+    }
+
+    fn next(&mut self) -> Option<&Token> {
+        let token = self.tokens.get(self.index);
+        self.index += 1;
+        token
+    }
+
+    fn peek(&self) -> Option<&Token> {
+        self.tokens.get(self.index)
+    }
+
+    fn parse_factor(&mut self) -> AST {
+        match self.next() {
+            Some(Token::Ident(name)) => AST::Var(name.clone()),
+            Some(Token::Sub) => {
+                let right = self.parse_factor();
+                AST::Oper(Box::new(AST::Number(0)), Oper::Subtraction, Box::new(right))
+            }
+            Some(Token::Number(n)) => AST::Number(*n),
+            Some(Token::LParen) => {
+                let expr = self.parse_or();
+                match self.next() {
+                    Some(Token::RParen) => expr,
+                    _ => panic!("[parse_factor] Could not find right bracket"),
+                }
+            }
+            _ => panic!("[parse_factor] Could not parse factor"),
+        }
+    }
+
+    fn parse_summand(&mut self) -> AST {
+        let mut ast = self.parse_factor();
+
+        while let Some(Token::Mul | Token::Div) = self.peek() {
+            let op: Oper = match self.peek() {
+                Some(Token::Mul) => Oper::Multiplication,
+                Some(Token::Div) => Oper::Division,
+                _ => panic!("[parse_summand] Could not parse Oper"),
+            };
+            self.next();
+            let right = self.parse_factor();
+            ast = AST::Oper(Box::new(ast), op, Box::new(right));
+        }
+        ast
+    }
+
+    fn parse_expr(&mut self) -> AST {
+        let mut ast = self.parse_summand();
+
+        while let Some(Token::Add | Token::Sub) = self.peek() {
+            let op: Oper = match self.peek() {
+                Some(Token::Add) => Oper::Addition,
+                Some(Token::Sub) => Oper::Subtraction,
+                _ => panic!("[parse_summand] Could not parse Oper"),
+            };
+            self.next();
+            let right = self.parse_summand();
+            ast = AST::Oper(Box::new(ast), op, Box::new(right));
+        }
+        ast
+    }
+
+    fn parse_comparison(&mut self) -> AST {
+        let mut ast = self.parse_expr();
+
+        while let Some(tok) = self.peek() {
+            let op = match tok {
+                Token::Greater => Oper::Greater,
+                Token::Less => Oper::Less,
+                Token::Equal => Oper::Equal,
+                _ => break,
+            };
+            self.next();
+            let right = self.parse_expr();
+            ast = AST::Oper(Box::new(ast), op, Box::new(right));
+        }
+        ast
+    }
+
+    fn parse_and(&mut self) -> AST {
+        let mut ast = self.parse_comparison();
+
+        while let Some(tok) = self.peek() {
+            let op = match tok {
+                Token::And => Oper::And,
+                _ => break,
+            };
+            self.next();
+            let right = self.parse_comparison();
+            ast = AST::Oper(Box::new(ast), op, Box::new(right));
+        }
+        ast
+    }
+    fn parse_or(&mut self) -> AST {
+        let mut ast = self.parse_and();
+
+        while let Some(tok) = self.peek() {
+            let op = match tok {
+                Token::Or => Oper::Or,
+                _ => break,
+            };
+            self.next();
+            let right = self.parse_and();
+            ast = AST::Oper(Box::new(ast), op, Box::new(right));
+        }
+        ast
+    }
+    fn parse_if(&mut self) -> AST {
+        self.next();
+
+        let cond = self.parse_or();
+
+        let then_branch = self.parse_block();
+
+        let else_branch = if let Some(Token::Else) = self.peek() {
+            self.next();
+            self.parse_block()
+        } else {
+            Vec::new()
+        };
+
+        AST::IfElse(Box::new(cond), then_branch, else_branch)
+    }
+
+    fn parse_block(&mut self) -> Vec<AST> {
+        let mut statements = Vec::new();
+
+        match self.next() {
+            Some(Token::LBrace) => {}
+            _ => panic!("Expected LBrace"),
+        }
+
+        while let Some(tok) = self.peek() {
+            if matches!(tok, Token::RBrace) {
+                break;
+            }
+            statements.push(self.parse_statement());
+            if let Some(Token::Semicolon) = self.peek() {
+                self.next();
+            }
+        }
+
+        match self.next() {
+            Some(Token::RBrace) => {}
+            _ => panic!("Expected RBrace"),
+        }
+
+        statements
+    }
+
+    fn parse_statement(&mut self) -> AST {
+        if let Some(Token::If) = self.peek() {
+            return self.parse_if();
+        }
+        if let Some(Token::Print) = self.peek() {
+            self.next();
+            let expr = self.parse_or();
+            return AST::Print(Box::new(expr));
+        }
+
+        if let Some(Token::Ident(name)) = self.peek() {
+            match self.tokens.get(self.index + 1) {
+                Some(Token::Assign) => {
+                    let name = name.clone();
+                    self.next();
+                    self.next();
+                    let expr = self.parse_or();
+                    return AST::Assign(name, Box::new(expr));
+                }
+
+                Some(Token::LazyAssign) => {
+                    let name = name.clone();
+                    self.next();
+                    self.next();
+                    let expr = self.parse_or();
+                    return AST::LazyAssign(name, Box::new(expr));
+                }
+
+                _ => {}
+            }
+        }
+
+        self.parse_or()
+    }
+
+    fn parse_program(&mut self) -> AST {
+        let mut statements = Vec::new();
+
+        while self.peek().is_some() {
+            statements.push(self.parse_statement());
+            if let Some(Token::Semicolon) = self.peek() {
+                self.next();
+            }
+        }
+        AST::Program(statements)
+    }
+}
+
+pub fn parse(tokens: Vec<Token>) -> AST {
+    let mut parser: Parser = Parser::new(tokens);
+    let result = parser.parse_program();
+    if parser.index != parser.tokens.len() {
+        panic!("Failed to consume all tokens!")
+    }
+    result
+}
