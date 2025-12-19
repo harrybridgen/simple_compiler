@@ -1,6 +1,6 @@
 use crate::grammar::AST;
 use crate::grammar::Instruction;
-use crate::grammar::Oper;
+use crate::grammar::Operator;
 use crate::grammar::Type;
 use std::collections::HashMap;
 
@@ -148,44 +148,44 @@ impl VM {
                     Type::LazyInteger(ast) => self.evaluate(*ast),
                 }
             }
-            AST::Oper(left, op, right) => {
+            AST::Operation(left, op, right) => {
                 let l = self.evaluate(*left);
                 let r = self.evaluate(*right);
 
                 match op {
-                    Oper::Addition => l + r,
-                    Oper::Multiplication => l * r,
-                    Oper::Division => l / r,
-                    Oper::Subtraction => l - r,
-                    Oper::Greater => {
+                    Operator::Addition => l + r,
+                    Operator::Multiplication => l * r,
+                    Operator::Division => l / r,
+                    Operator::Subtraction => l - r,
+                    Operator::Greater => {
                         if l > r {
                             1
                         } else {
                             0
                         }
                     }
-                    Oper::Less => {
+                    Operator::Less => {
                         if l < r {
                             1
                         } else {
                             0
                         }
                     }
-                    Oper::Equal => {
+                    Operator::Equal => {
                         if l == r {
                             1
                         } else {
                             0
                         }
                     }
-                    Oper::Or => {
+                    Operator::Or => {
                         if l > 0 || r > 0 {
                             1
                         } else {
                             0
                         }
                     }
-                    Oper::And => {
+                    Operator::And => {
                         if l > 0 && r > 0 {
                             1
                         } else {

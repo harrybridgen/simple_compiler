@@ -1,4 +1,4 @@
-use crate::grammar::{AST, Oper, Token};
+use crate::grammar::{AST, Operator, Token};
 
 struct Parser {
     tokens: Vec<Token>,
@@ -25,7 +25,7 @@ impl Parser {
             Some(Token::Ident(name)) => AST::Var(name.clone()),
             Some(Token::Sub) => {
                 let right = self.parse_factor();
-                AST::Oper(Box::new(AST::Number(0)), Oper::Subtraction, Box::new(right))
+                AST::Operation(Box::new(AST::Number(0)), Operator::Subtraction, Box::new(right))
             }
             Some(Token::Number(n)) => AST::Number(*n),
             Some(Token::LParen) => {
@@ -43,14 +43,14 @@ impl Parser {
         let mut ast = self.parse_factor();
 
         while let Some(Token::Mul | Token::Div) = self.peek() {
-            let op: Oper = match self.peek() {
-                Some(Token::Mul) => Oper::Multiplication,
-                Some(Token::Div) => Oper::Division,
-                _ => panic!("[parse_summand] Could not parse Oper"),
+            let op: Operator = match self.peek() {
+                Some(Token::Mul) => Operator::Multiplication,
+                Some(Token::Div) => Operator::Division,
+                _ => panic!("[parse_summand] Could not parse Operation"),
             };
             self.next();
             let right = self.parse_factor();
-            ast = AST::Oper(Box::new(ast), op, Box::new(right));
+            ast = AST::Operation(Box::new(ast), op, Box::new(right));
         }
         ast
     }
@@ -59,14 +59,14 @@ impl Parser {
         let mut ast = self.parse_summand();
 
         while let Some(Token::Add | Token::Sub) = self.peek() {
-            let op: Oper = match self.peek() {
-                Some(Token::Add) => Oper::Addition,
-                Some(Token::Sub) => Oper::Subtraction,
-                _ => panic!("[parse_summand] Could not parse Oper"),
+            let op: Operator = match self.peek() {
+                Some(Token::Add) => Operator::Addition,
+                Some(Token::Sub) => Operator::Subtraction,
+                _ => panic!("[parse_summand] Could not parse Operation"),
             };
             self.next();
             let right = self.parse_summand();
-            ast = AST::Oper(Box::new(ast), op, Box::new(right));
+            ast = AST::Operation(Box::new(ast), op, Box::new(right));
         }
         ast
     }
@@ -76,14 +76,14 @@ impl Parser {
 
         while let Some(tok) = self.peek() {
             let op = match tok {
-                Token::Greater => Oper::Greater,
-                Token::Less => Oper::Less,
-                Token::Equal => Oper::Equal,
+                Token::Greater => Operator::Greater,
+                Token::Less => Operator::Less,
+                Token::Equal => Operator::Equal,
                 _ => break,
             };
             self.next();
             let right = self.parse_expr();
-            ast = AST::Oper(Box::new(ast), op, Box::new(right));
+            ast = AST::Operation(Box::new(ast), op, Box::new(right));
         }
         ast
     }
@@ -93,12 +93,12 @@ impl Parser {
 
         while let Some(tok) = self.peek() {
             let op = match tok {
-                Token::And => Oper::And,
+                Token::And => Operator::And,
                 _ => break,
             };
             self.next();
             let right = self.parse_comparison();
-            ast = AST::Oper(Box::new(ast), op, Box::new(right));
+            ast = AST::Operation(Box::new(ast), op, Box::new(right));
         }
         ast
     }
@@ -107,12 +107,12 @@ impl Parser {
 
         while let Some(tok) = self.peek() {
             let op = match tok {
-                Token::Or => Oper::Or,
+                Token::Or => Operator::Or,
                 _ => break,
             };
             self.next();
             let right = self.parse_and();
-            ast = AST::Oper(Box::new(ast), op, Box::new(right));
+            ast = AST::Operation(Box::new(ast), op, Box::new(right));
         }
         ast
     }
@@ -167,6 +167,11 @@ impl Parser {
             self.next();
             let expr = self.parse_or();
             return AST::Print(Box::new(expr));
+        }
+        if let Some(Token::Loop) = self.peek() {
+            self.next();
+            let loop_block = self.parse_block();
+            return AST::Loop(loop_block)
         }
 
         if let Some(Token::Ident(name)) = self.peek() {

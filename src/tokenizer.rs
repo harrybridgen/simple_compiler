@@ -39,6 +39,11 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                     tokens.push(Token::If);
                 } else if str == "else" {
                     tokens.push(Token::Else);
+                }else if str == "loop"{
+                    tokens.push(Token::Loop);
+                }else if str == "break"{
+                    tokens.push(Token::Break);
+                
                 } else {
                     tokens.push(Token::Ident(str));
                 }

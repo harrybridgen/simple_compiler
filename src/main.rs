@@ -1,7 +1,7 @@
 use std::fs;
 
 use simple_parser::compiler::compile;
-use simple_parser::compiler::label_gen;
+use simple_parser::compiler::LabelGenerator;
 use simple_parser::grammar::Instruction;
 use simple_parser::parser::parse;
 use simple_parser::tokenizer::tokenize;
@@ -20,7 +20,7 @@ fn main() {
     println!("{:#?}", ast);
 
     let mut byte_code: Vec<Instruction> = Vec::new();
-    let mut label_gen = label_gen::new();
+    let mut label_gen = LabelGenerator::new();
     compile(ast, &mut byte_code, &mut label_gen);
     println!("{:?}", byte_code);
 

@@ -37,6 +37,8 @@ pub enum Token {
     Else,
     LBrace,
     RBrace,
+    Loop,
+    Break
 }
 
 #[derive(Debug, Clone)]
@@ -48,17 +50,18 @@ pub enum Type {
 #[derive(Debug, Clone)]
 pub enum AST {
     Number(i32),
-    Oper(Box<AST>, Oper, Box<AST>),
+    Operation(Box<AST>, Operator, Box<AST>),
     Assign(String, Box<AST>),
     LazyAssign(String, Box<AST>),
     Var(String),
     Program(Vec<AST>),
     Print(Box<AST>),
     IfElse(Box<AST>, Vec<AST>, Vec<AST>),
+    Loop(Vec<AST>)
 }
 
 #[derive(Debug, Clone)]
-pub enum Oper {
+pub enum Operator {
     Addition,
     Multiplication,
     Division,

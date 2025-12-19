@@ -1,24 +1,35 @@
-use crate::grammar::{AST, Instruction, Oper};
+use crate::grammar::{AST, Instruction, Operator};
 
-pub fn compile(ast: AST, code: &mut Vec<Instruction>, label_gen: &mut label_gen) {
+pub fn compile(ast: AST, code: &mut Vec<Instruction>, label_gen: &mut LabelGenerator) {
     match ast {
         AST::Number(n) => code.push(Instruction::Push(n)),
-        AST::Oper(left, oper, right) => {
+        AST::Operation(left, oper, right) => {
             compile(*left, code, label_gen);
             compile(*right, code, label_gen);
 
             match oper {
-                Oper::Addition => code.push(Instruction::Add),
-                Oper::Division => code.push(Instruction::Div),
-                Oper::Multiplication => code.push(Instruction::Mul),
-                Oper::Subtraction => code.push(Instruction::Sub),
-                Oper::Greater => code.push(Instruction::Greater),
-                Oper::Less => code.push(Instruction::Less),
-                Oper::Equal => code.push(Instruction::Equal),
-                Oper::Or => code.push(Instruction::Or),
-                Oper::And => code.push(Instruction::And),
+                Operator::Addition => code.push(Instruction::Add),
+                Operator::Division => code.push(Instruction::Div),
+                Operator::Multiplication => code.push(Instruction::Mul),
+                Operator::Subtraction => code.push(Instruction::Sub),
+                Operator::Greater => code.push(Instruction::Greater),
+                Operator::Less => code.push(Instruction::Less),
+                Operator::Equal => code.push(Instruction::Equal),
+                Operator::Or => code.push(Instruction::Or),
+                Operator::And => code.push(Instruction::And),
             }
         }
+
+        AST::Loop(block) => {
+            let looplabel = label_gen.fresh("loop");
+
+            code.push(Instruction::Label(looplabel.clone()));
+            for ast in block {
+                compile(ast, code, label_gen);
+            }
+            code.push(Instruction::Jump(looplabel));
+        }
+
         AST::Assign(name, ast) => {
             compile(*ast, code, label_gen);
             code.push(Instruction::Store(name));
@@ -63,11 +74,11 @@ pub fn compile(ast: AST, code: &mut Vec<Instruction>, label_gen: &mut label_gen)
     }
 }
 
-pub struct label_gen {
+pub struct LabelGenerator {
     counter: usize,
 }
 
-impl label_gen {
+impl LabelGenerator {
     pub fn new() -> Self {
         Self { counter: 0 }
     }
