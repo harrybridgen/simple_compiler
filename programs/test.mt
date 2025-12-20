@@ -1,22 +1,24 @@
-arr = [10];
+fib = [10];
 
 x = 0;
-dx ::= x + 1;
+vx = 1;
+dx ::= x + vx;
 
-arr[0] ::= dx;
+fib[0] ::= 0;
+fib[1] ::= 1;
 
-loop{
-    if x >= arr-1 {
+loop {
+    if x >= fib - 2 {
         break;
     }
 
     i := x;
-    arr[i+1] ::= arr[i] * 2;
+    a := i;
+    b := i + 1;
+
+    fib[i+2] ::= fib[a] + fib[b];
 
     x = dx;
 }
 
-x = 20; 
-println arr[9];
-x = 10;
-println arr[9];
+println fib[9];
