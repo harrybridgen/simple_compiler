@@ -83,7 +83,7 @@ loop {
         break;
     }
 
-    x = dx;
+    x = dx; # advances dx by +1 #
 }
 ```
 ### Array Dependency Chain
@@ -93,7 +93,7 @@ arr = [5];
 base = 1;
 
 arr[0] ::= base;
-arr[1] ::= arr[0] + 1;
+arr[1] ::= arr[0] + 1; # relation between current and previous index is +1 #
 arr[2] ::= arr[1] + 1;
 arr[3] ::= arr[2] + 1;
 arr[4] ::= arr[3] + 1;
@@ -107,17 +107,16 @@ println arr[4];   # 14 #
 
 ### Fibonacci-style dependency graph
 ```haskell
-fib = [10]; 
+fib = [10]; # allocate array #
 
-n0 = 0; 
+n0 = 0; # base cases #
 n1 = 1;
 
-fib[0] ::= n0;
+fib[0] ::= n0; # relation for base cases #
 fib[1] ::= n1;
 
-x = 0;
+x = 0; # loop set up
 dx ::= x + 1;
-
 
 loop {
     if x >= fib - 2 {
@@ -125,7 +124,7 @@ loop {
     }
 
     i := x;
-    fib[i + 2] ::= fib[i] + fib[i + 1];
+    fib[i + 2] ::= fib[i] + fib[i + 1]; # set up relations between array indexes #
     x = dx;
 }
 
@@ -134,11 +133,11 @@ loop{
     if x >= fib {
         break;
     }
-    println fib[x];
+    println fib[x]; # print the array #
     x = dx;
 }
 
-n0 = 89;
+n0 = 89; # change base values #
 n1 = 144;
 
 x = 0;
@@ -146,7 +145,7 @@ loop{
     if x >= fib {
         break;
     }
-    println fib[x];
+    println fib[x]; # array prints differently due to relational indexes #
     x = dx;
 }
 
