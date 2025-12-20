@@ -251,8 +251,63 @@ loop{
     println fib[x]; 
     x = dx;
 }
+```
 
+### Bank Account with reactive fields
+```haskell
+# Account struct with reactive fields #
+struct Account {
+    balance = 0;
+    rate := 5;              # interest rate in percent #
+    interest ::= balance * rate / 100;
+    projected ::= balance + interest;
+}
 
+# create a new account #
+func makeaccount(start) {
+    a = struct Account;
+    a.balance = start;
+    return a;
+}
+
+# deposit money #
+func deposit(a, amount) {
+    a.balance = a.balance + amount;
+    return a.balance;
+}
+
+# withdraw money #
+func withdraw(a, amount) {
+    if amount > a.balance {
+        return a.balance;
+    }
+
+    a.balance = a.balance - amount;
+    return a.balance;
+}
+
+# apply interest #
+func applyinterest(a) {
+    a.balance = a.projected;
+    return a.balance;
+}
+
+# ---- demo ---- #
+
+acct = makeaccount(1000);
+
+println acct.balance;    # 1000 #
+println acct.interest;   # 50 #
+println acct.projected;  # 1050 #
+
+deposit(acct, 500);
+println acct.projected;  # 1575 #
+
+applyinterest(acct);
+println acct.balance;    # 1575 #
+
+withdraw(acct, 200);
+println acct.projected;  # 1443 #
 ```
 
 ## Grammar
