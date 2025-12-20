@@ -71,6 +71,21 @@ x = 7;
 println arr[0];  # 70 #
 ```
 
+### Simple Counting Loop
+```haskell
+x = 0;
+dx ::= x + 1;
+
+loop {
+    println x;
+
+    if x >= 4 {
+        break;
+    }
+
+    x = dx;
+}
+```
 ### Array Dependency Chain
 ```haskell
 arr = [5];
@@ -92,20 +107,18 @@ println arr[4];   # 14 #
 
 ### Fibonacci-style dependency graph
 ```haskell
-# allocate array #
 fib = [10]; 
 
-# set up base cases #
 n0 = 0; 
 n1 = 1;
+
 fib[0] ::= n0;
 fib[1] ::= n1;
 
-# init loop #
 x = 0;
 dx ::= x + 1;
 
-# construct relational array #
+
 loop {
     if x >= fib - 2 {
         break;
@@ -116,7 +129,6 @@ loop {
     x = dx;
 }
 
-# print relational array #
 x = 0;
 loop{
     if x >= fib {
@@ -126,11 +138,9 @@ loop{
     x = dx;
 }
 
-# ! change the base values ! #
 n0 = 89;
 n1 = 144;
 
-## print relational array (different than before)
 x = 0;
 loop{
     if x >= fib {
@@ -139,6 +149,7 @@ loop{
     println fib[x];
     x = dx;
 }
+
 
 ```
 
