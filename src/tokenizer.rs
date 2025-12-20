@@ -52,11 +52,18 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 }
             }
             ':' => {
-                if let Some('=') = chars.peek() {
+                if let Some(':') = chars.peek() {
                     chars.next();
-                    tokens.push(Token::LazyAssign);
+                    if let Some('=') = chars.next() {
+                        tokens.push(Token::ReactiveAssign);
+                    } else {
+                        panic!("Did not find matching '=' for reactive eval '::'")
+                    }
+                } else if let Some('=') = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::ImmutableAssign);
                 } else {
-                    panic!("Did not find matching '=' for lazy eval ':'")
+                    panic!("Did not find matching '=' for immutable ':'")
                 }
             }
             '|' => {

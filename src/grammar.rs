@@ -2,7 +2,9 @@
 
 // statement   ::= identifier "=" expression
 //               | identifier ":=" expression
-//               | print expr
+//               | identifier "::=" expression
+//               | print expression
+//               | println expression
 //               | expression
 
 // expression  ::= summand (("+" | "-") summand)*
@@ -13,6 +15,8 @@
 //               | number
 //               | identifier
 //               | "(" expression ")"
+
+// comment     ::=    #COMMENT HERE#
 
 #[derive(Debug, Clone)]
 pub enum Token {
@@ -25,7 +29,8 @@ pub enum Token {
     RParen,
     Ident(String),
     Assign,
-    LazyAssign,
+    ReactiveAssign,
+    ImmutableAssign,
     Semicolon,
     Print,
     Println,
@@ -57,7 +62,8 @@ pub enum AST {
     Number(i32),
     Operation(Box<AST>, Operator, Box<AST>),
     Assign(String, Box<AST>),
-    LazyAssign(String, Box<AST>),
+    ReactiveAssign(String, Box<AST>),
+    ImmutableAssign(String, Box<AST>),
     Var(String),
     Program(Vec<AST>),
     Print(Box<AST>),
@@ -69,7 +75,7 @@ pub enum AST {
     ArrayNew(Box<AST>),                  
     Index(Box<AST>, Box<AST>),          
     AssignIndex(String, Box<AST>, Box<AST>),    
-    LazyAssignIndex(String, Box<AST>, Box<AST>),
+    ReactiveAssignIndex(String, Box<AST>, Box<AST>),
 }
 
 #[derive(Debug, Clone)]
@@ -97,7 +103,8 @@ pub enum Instruction {
     Push(i32),
     Load(String),
     Store(String),
-    StoreLazy(String, Box<AST>),
+    StoreReactive(String, Box<AST>),
+    StoreImmutable(String),
     Print,
     Println,
     Greater,
@@ -114,6 +121,9 @@ pub enum Instruction {
     
     ArrayNew, // pops Integer(size), pushes Array(len=size, init 0)
     ArrayGet, // pops index(Integer) and array(Array), pushes element (evaluated to Integer if lazy)
-    StoreIndex(String),              // pops value, pops index(Integer); mutates env[name] as array
-    StoreIndexLazy(String, Box<AST>),// pops index(Integer); stores LazyInteger(ast) into env[name][index]
+    StoreIndex(String),               // pops value, pops index(Integer); mutates env[name] as array
+    StoreIndexReactive(String, Box<AST>),// pops index(Integer); stores LazyInteger(ast) into env[name][index]
+    PushImmutableContext,
+    PopImmutableContext,
+    ClearImmutableContext,
 }

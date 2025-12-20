@@ -8,6 +8,7 @@ pub struct VM {
     stack: Vec<Type>,
     environment: HashMap<String, Type>,
     pointer: usize,
+    immutable_stack: Vec<HashMap<String, Type>>,
     code: Vec<Instruction>,
     labels: HashMap<String, usize>,
 }
@@ -22,7 +23,7 @@ impl VM {
         }
         VM {
             stack: Vec::new(),
-            environment: HashMap::new(),
+            environment: HashMap::new(),immutable_stack: vec![HashMap::new()],
             pointer: 0,
             code,
             labels,
@@ -38,21 +39,38 @@ impl VM {
                 Instruction::Push(n) => self.stack.push(Type::Integer(n)),
 
                 Instruction::Store(name) => {
+                    if self.immutable_exists(&name) {
+                        panic!("Cannot assign to immutable binding: {name}");
+                    }
                     let value = self.stack.pop().expect("Stack underflow on Store");
                     self.environment.insert(name.clone(), value);
                 }
 
-                Instruction::StoreLazy(name, ast) => {
-                    self.environment
-                        .insert(name.clone(), Type::LazyInteger(ast.clone()));
+                Instruction::StoreReactive(name, ast) => {
+                    if self.immutable_exists(&name) {
+                        panic!("Cannot assign to immutable binding: {name}");
+                    }
+                    let frozen = self.freeze_ast(ast.clone());
+                    self.environment.insert(name.clone(), Type::LazyInteger(frozen));
+                }
+                Instruction::StoreImmutable(name) => {
+                    let value = self.stack.pop().expect("Stack underflow on StoreImmutable");
+                    let current = self
+                        .immutable_stack
+                        .last_mut()
+                        .expect("Immutable context missing");
+                    if current.contains_key(&name) {
+                        panic!("Immutable binding already exists: {name}");
+                    }
+                    current.insert(name, value);
                 }
 
                 Instruction::Load(name) => {
                     let value = self
-                        .environment
-                        .get(&name)
-                        .unwrap_or_else(|| panic!("Undefined variable: {name}"))
-                        .clone();
+                        .find_immutable(&name)
+                        .cloned()
+                        .or_else(|| self.environment.get(&name).cloned())
+                        .unwrap_or_else(|| panic!("Undefined variable: {name}"));
                     let loaded = self.load_value(value);
                     self.stack.push(loaded);
                 }
@@ -205,6 +223,9 @@ impl VM {
                 }
 
                 Instruction::StoreIndex(name) => {
+                    if self.immutable_exists(&name) {
+                        panic!("Cannot assign to immutable binding: {name}");
+                    }
                     let value = self.stack.pop().expect("Stack underflow on StoreIndex (value)");
                     let index_v = self.stack.pop().expect("Stack underflow on StoreIndex (index)");
                     let idx = self.as_int(index_v);
@@ -230,14 +251,21 @@ impl VM {
                     }
                 }
 
-                Instruction::StoreIndexLazy(name, ast) => {
-                    let index_v =
-                        self.stack.pop().expect("Stack underflow on StoreIndexLazy (index)");
+                Instruction::StoreIndexReactive(name, ast) => {
+                    if self.immutable_exists(&name) {
+                        panic!("Cannot assign to immutable binding: {name}");
+                    }
+                    let index_v = self
+                        .stack
+                        .pop()
+                        .expect("Stack underflow on StoreIndexReactive (index)");
                     let idx = self.as_int(index_v);
 
                     if idx < 0 {
                         panic!("Array index cannot be negative");
                     }
+
+                    let frozen = self.freeze_ast(ast.clone());
 
                     let entry = self
                         .environment
@@ -250,10 +278,28 @@ impl VM {
                             if i >= items.len() {
                                 panic!("Index out of bounds");
                             }
-                            items[i] = Type::LazyInteger(ast.clone());
+                            items[i] = Type::LazyInteger(frozen);
                         }
                         other => panic!("Tried to lazy index-assign into non-array value: {:?}", other),
                     }
+                }
+                Instruction::PushImmutableContext => {
+                    self.immutable_stack.push(HashMap::new());
+                }
+
+                Instruction::PopImmutableContext => {
+                    if self.immutable_stack.len() == 1 {
+                        panic!("Cannot pop base immutable context");
+                    }
+                    self.immutable_stack.pop();
+                }
+
+                Instruction::ClearImmutableContext => {
+                    let current = self
+                        .immutable_stack
+                        .last_mut()
+                        .expect("Immutable context missing");
+                    current.clear();
                 }
             }
 
@@ -262,16 +308,16 @@ impl VM {
         }
     }
 
-    fn evaluate(&self, ast: AST) -> i32 {
+        fn evaluate(&self, ast: AST) -> i32 {
         match ast {
             AST::Number(n) => n,
 
             AST::Var(name) => {
                 let var = self
-                    .environment
-                    .get(&name)
-                    .unwrap_or_else(|| panic!("Undefined variable: {name}"))
-                    .clone();
+                    .find_immutable(&name)
+                    .cloned()
+                    .or_else(|| self.environment.get(&name).cloned())
+                    .unwrap_or_else(|| panic!("Undefined variable: {name}"));
 
                 match var {
                     Type::Integer(n) => n,
@@ -319,10 +365,10 @@ impl VM {
             AST::Index(base, index) => {
                 let base_val = match *base {
                     AST::Var(name) => self
-                        .environment
-                        .get(&name)
-                        .unwrap_or_else(|| panic!("Undefined variable: {name}"))
-                        .clone(),
+                        .find_immutable(&name)
+                        .cloned()
+                        .or_else(|| self.environment.get(&name).cloned())
+                        .unwrap_or_else(|| panic!("Undefined variable: {name}")),
                     other => panic!("Index base must be a variable in lazy eval: {:?}", other),
                 };
 
@@ -351,6 +397,16 @@ impl VM {
             _ => panic!("Error in AST evaluator"),
         }
     }
+    fn find_immutable(&self, name: &str) -> Option<&Type> {
+        self.immutable_stack
+            .iter()
+            .rev()
+            .find_map(|scope| scope.get(name))
+    }
+
+    fn immutable_exists(&self, name: &str) -> bool {
+        self.find_immutable(name).is_some()
+    }
 
     pub fn dump(&self, instr: &Instruction) {
         println!(
@@ -360,6 +416,7 @@ impl VM {
             self.environment
         );
     }
+
 
     fn as_int(& self, v: Type) -> i32 {
         match v {
@@ -379,6 +436,44 @@ impl VM {
     fn pop(&mut self, msg: &str) -> Type {
     self.stack.pop().unwrap_or_else(|| panic!("{msg}"))
 }
+fn freeze_ast(&self, ast: Box<AST>) -> Box<AST> {
+    match *ast {
+        AST::Var(name) => {
+            if let Some(v) = self.find_immutable(&name) {
+                match v {
+                    Type::Integer(n) => Box::new(AST::Number(*n)),
+                    _ => Box::new(AST::Var(name)),
+                }
+            } else {
+                Box::new(AST::Var(name))
+            }
+        }
+
+        AST::Number(n) => Box::new(AST::Number(n)),
+
+        AST::Operation(l, op, r) => {
+            Box::new(AST::Operation(
+                self.freeze_ast(l),
+                op,
+                self.freeze_ast(r),
+            ))
+        }
+
+        AST::Index(base, idx) => {
+            Box::new(AST::Index(
+                self.freeze_ast(base),
+                self.freeze_ast(idx),
+            ))
+        }
+
+        AST::ArrayNew(sz) => {
+            Box::new(AST::ArrayNew(self.freeze_ast(sz)))
+        }
+
+        other => Box::new(other),
+    }
+}
+
 
 fn pop_int(&mut self, msg: &str) -> i32 {
     let v = self.pop(msg);

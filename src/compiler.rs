@@ -28,9 +28,9 @@ pub fn compile(
         code.push(Instruction::StoreIndex(name));
     }
 
-    AST::LazyAssignIndex(name, index_expr, value_expr) => {
+    AST::ReactiveAssignIndex(name, index_expr, value_expr) => {
         compile(*index_expr, code, label_gen, break_stack);
-        code.push(Instruction::StoreIndexLazy(name, value_expr));
+        code.push(Instruction::StoreIndexReactive(name, value_expr));
     }
         AST::Operation(left, operator, right) => {
             compile(*left, code, label_gen, break_stack);
@@ -55,8 +55,12 @@ pub fn compile(
             compile(*ast, code, label_gen, break_stack);
             code.push(Instruction::Store(name));
         }
-        AST::LazyAssign(name, ast) => {
-            code.push(Instruction::StoreLazy(name, ast));
+        AST::ReactiveAssign(name, ast) => {
+            code.push(Instruction::StoreReactive(name, ast));
+        }
+        AST::ImmutableAssign(name, ast) => {
+            compile(*ast, code, label_gen, break_stack);
+            code.push(Instruction::StoreImmutable(name));
         }
         AST::Print(ast) => {
             compile(*ast, code, label_gen, break_stack);
@@ -92,13 +96,15 @@ pub fn compile(
 
             code.push(Instruction::Label(end_label));
         }
-        AST::Loop(block) => {
+        AST::Loop(block) => {   
             let loop_start = label_gen.fresh("loop_start");
             let loop_end = label_gen.fresh("loop_end");
 
             break_stack.push(loop_end.clone());
 
+            code.push(Instruction::PushImmutableContext);
             code.push(Instruction::Label(loop_start.clone()));
+            code.push(Instruction::ClearImmutableContext);
 
             for stmt in block {
                 compile(stmt, code, label_gen, break_stack);
@@ -106,6 +112,7 @@ pub fn compile(
 
             code.push(Instruction::Jump(loop_start));
             code.push(Instruction::Label(loop_end));
+            code.push(Instruction::PopImmutableContext);
 
             break_stack.pop();
         }

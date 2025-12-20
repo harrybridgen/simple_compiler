@@ -220,51 +220,56 @@ fn parse_summand(&mut self) -> AST {
         }
 
         if let Some(Token::Ident(name)) = self.peek() {
-    if matches!(self.tokens.get(self.index + 1), Some(Token::Assign | Token::LazyAssign)) {
-        let name = name.clone();
-        self.next(); 
-        let is_lazy = matches!(self.next(), Some(Token::LazyAssign));
-        let expr = self.parse_or();
-        return if is_lazy {
-            AST::LazyAssign(name, Box::new(expr))
-        } else {
-            AST::Assign(name, Box::new(expr))
-        };
-    }
+            if matches!(
+                self.tokens.get(self.index + 1),
+                Some(Token::Assign | Token::ReactiveAssign | Token::ImmutableAssign)
+            ) {
+                let name = name.clone();
+                self.next();
+                let op = self.next().cloned();
+                let expr = self.parse_or();
+                return match op {
+                    Some(Token::Assign) => AST::Assign(name, Box::new(expr)),
+                    Some(Token::ReactiveAssign) => AST::ReactiveAssign(name, Box::new(expr)),
+                    Some(Token::ImmutableAssign) => AST::ImmutableAssign(name, Box::new(expr)),
+                    _ => panic!("[parse_statement] Expected assignment operator after identifier"),
+                };
+            }
 
-if matches!(self.tokens.get(self.index + 1), Some(Token::LSquare)) {
-    let arr_name = name.clone();
-    self.next();
+            if matches!(self.tokens.get(self.index + 1), Some(Token::LSquare)) {
+                let arr_name = name.clone();
+                self.next();
 
-    match self.next() {
-        Some(Token::LSquare) => {}
-        _ => panic!("[parse_statement] Expected '[' after array name"),
-    }
+                match self.next() {
+                    Some(Token::LSquare) => {}
+                    _ => panic!("[parse_statement] Expected '[' after array name"),
+                }
 
-    let index_expr = self.parse_or();
+                let index_expr = self.parse_or();
 
-    match self.next() {
-        Some(Token::RSquare) => {}
-        _ => panic!("[parse_statement] Expected ']' after index"),
-    }
+                match self.next() {
+                    Some(Token::RSquare) => {}
+                    _ => panic!("[parse_statement] Expected ']' after index"),
+                }
 
-    let op_tok = self.next().cloned();
-    let value_expr = self.parse_or();
+                let op_tok = self.next().cloned();
+                let value_expr = self.parse_or();
 
-    return match op_tok {
-        Some(Token::Assign) => {
-            AST::AssignIndex(arr_name, Box::new(index_expr), Box::new(value_expr))
-        }
-        Some(Token::LazyAssign) => {
-            AST::LazyAssignIndex(arr_name, Box::new(index_expr), Box::new(value_expr))
-        }
-        _ => panic!("[parse_statement] Expected '=' or ':=' after arr[index]"),
-    };
-}
+                return match op_tok {
+                    Some(Token::Assign) => {
+                        AST::AssignIndex(arr_name, Box::new(index_expr), Box::new(value_expr))
+                    }
+                    Some(Token::ReactiveAssign) => {
+                        AST::ReactiveAssignIndex(arr_name, Box::new(index_expr), Box::new(value_expr))
+                    }
+                    Some(Token::ImmutableAssign) => {
+                        panic!("[parse_statement] Immutable ':=' is not valid after arr[index]")
+                    }
+                    _ => panic!("[parse_statement] Expected '=' or '::=' after arr[index]"),
+                };
+            }
 
-}
-
-
+            }
         self.parse_or()
     }
 
