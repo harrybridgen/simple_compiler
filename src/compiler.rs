@@ -7,15 +7,37 @@ pub fn compile(
     break_stack: &mut Vec<String>,
 ) {
     match ast {
-        AST::Number(n) => code.push(Instruction::Push(n)),
+    AST::Number(n) => code.push(Instruction::Push(n)),
 
-        AST::Var(name) => code.push(Instruction::Load(name)),
+    AST::Var(name) => code.push(Instruction::Load(name)),
 
-        AST::Operation(left, oper, right) => {
+    AST::ArrayNew(size_expr) => {
+        compile(*size_expr, code, label_gen, break_stack);
+        code.push(Instruction::ArrayNew);
+    }
+
+    AST::Index(base, index) => {
+        compile(*base, code, label_gen, break_stack);
+        compile(*index, code, label_gen, break_stack);
+        code.push(Instruction::ArrayGet);
+    }
+
+    AST::AssignIndex(name, index_expr, value_expr) => {
+        compile(*index_expr, code, label_gen, break_stack);
+        compile(*value_expr, code, label_gen, break_stack);
+        code.push(Instruction::StoreIndex(name));
+    }
+
+    AST::LazyAssignIndex(name, index_expr, value_expr) => {
+        // Evaluate index now; store value lazily as AST (do not compile value_expr here).
+        compile(*index_expr, code, label_gen, break_stack);
+        code.push(Instruction::StoreIndexLazy(name, value_expr));
+    }
+        AST::Operation(left, operator, right) => {
             compile(*left, code, label_gen, break_stack);
             compile(*right, code, label_gen, break_stack);
 
-            match oper {
+            match operator {
                 Operator::Addition => code.push(Instruction::Add),
                 Operator::Division => code.push(Instruction::Div),
                 Operator::Multiplication => code.push(Instruction::Mul),
@@ -30,28 +52,27 @@ pub fn compile(
                 Operator::NotEqual => code.push(Instruction::NotEqual),
             }
         }
-
         AST::Assign(name, ast) => {
             compile(*ast, code, label_gen, break_stack);
             code.push(Instruction::Store(name));
         }
-
         AST::LazyAssign(name, ast) => {
             code.push(Instruction::StoreLazy(name, ast));
         }
-
         AST::Print(ast) => {
             compile(*ast, code, label_gen, break_stack);
             code.push(Instruction::Print);
         }
-
+        AST::Println(ast) => {
+            compile(*ast, code, label_gen, break_stack);
+            code.push(Instruction::Println);
+        }
         AST::Program(statements) => {
-            for stmt in statements {
-                compile(stmt, code, label_gen, break_stack);
+            for statement in statements {
+                compile(statement, code, label_gen, break_stack);
             }
         }
-
-        AST::IfElse(cond, ifbranch, elsebranch) => {
+        AST::IfElse(cond, if_branch, else_branch) => {
             compile(*cond, code, label_gen, break_stack);
 
             let else_label = label_gen.fresh("else");
@@ -59,20 +80,19 @@ pub fn compile(
 
             code.push(Instruction::JumpIfZero(else_label.clone()));
 
-            for stmt in ifbranch {
-                compile(stmt, code, label_gen, break_stack);
+            for statement in if_branch {
+                compile(statement, code, label_gen, break_stack);
             }
 
             code.push(Instruction::Jump(end_label.clone()));
             code.push(Instruction::Label(else_label));
 
-            for stmt in elsebranch {
-                compile(stmt, code, label_gen, break_stack);
+            for statement in else_branch {
+                compile(statement, code, label_gen, break_stack);
             }
 
             code.push(Instruction::Label(end_label));
         }
-
         AST::Loop(block) => {
             let loop_start = label_gen.fresh("loop_start");
             let loop_end = label_gen.fresh("loop_end");
@@ -90,7 +110,6 @@ pub fn compile(
 
             break_stack.pop();
         }
-
         AST::Break => {
             let target = break_stack
                 .last()

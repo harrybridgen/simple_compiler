@@ -14,7 +14,7 @@
 //               | identifier
 //               | "(" expression ")"
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Token {
     Add,
     Mul,
@@ -28,6 +28,7 @@ pub enum Token {
     LazyAssign,
     Semicolon,
     Print,
+    Println,
     Greater,
     Less,
     Equal,
@@ -36,7 +37,7 @@ pub enum Token {
     If,
     Else,
     LBrace,
-    RBrace,
+    RBrace, LSquare, RSquare,
     Loop,
     Break,
     LessEqual,
@@ -48,7 +49,7 @@ pub enum Token {
 #[derive(Debug, Clone)]
 pub enum Type {
     Integer(i32),
-    LazyInteger(Box<AST>),
+    LazyInteger(Box<AST>),Array(Vec<Type>),
 }
 
 #[derive(Debug, Clone)]
@@ -60,8 +61,15 @@ pub enum AST {
     Var(String),
     Program(Vec<AST>),
     Print(Box<AST>),
+    Println(Box<AST>),
     IfElse(Box<AST>, Vec<AST>, Vec<AST>),
-    Loop(Vec<AST>),Break
+    Loop(Vec<AST>),
+    Break,
+
+    ArrayNew(Box<AST>),                  // [size_expr]
+    Index(Box<AST>, Box<AST>),           // base[index]
+    AssignIndex(String, Box<AST>, Box<AST>),     // name[index] = value
+    LazyAssignIndex(String, Box<AST>, Box<AST>), // name[index] := value
 }
 
 #[derive(Debug, Clone)]
@@ -80,7 +88,7 @@ pub enum Operator {
     And,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Instruction {
     Add,
     Mul,
@@ -91,6 +99,7 @@ pub enum Instruction {
     Store(String),
     StoreLazy(String, Box<AST>),
     Print,
+    Println,
     Greater,
     Less,
     GreaterEqual,
@@ -102,4 +111,9 @@ pub enum Instruction {
     Label(String),
     Jump(String),
     JumpIfZero(String),
+    
+    ArrayNew, // pops Integer(size), pushes Array(len=size, init 0)
+    ArrayGet, // pops index(Integer) and array(Array), pushes element (evaluated to Integer if lazy)
+    StoreIndex(String),              // pops value, pops index(Integer); mutates env[name] as array
+    StoreIndexLazy(String, Box<AST>),// pops index(Integer); stores LazyInteger(ast) into env[name][index]
 }

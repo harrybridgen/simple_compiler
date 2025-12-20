@@ -20,40 +20,69 @@ impl Parser {
         self.tokens.get(self.index)
     }
 
-    fn parse_factor(&mut self) -> AST {
-        match self.next() {
-            Some(Token::Ident(name)) => AST::Var(name.clone()),
-            Some(Token::Sub) => {
-                let right = self.parse_factor();
-                AST::Operation(Box::new(AST::Number(0)), Operator::Subtraction, Box::new(right))
-            }
-            Some(Token::Number(n)) => AST::Number(*n),
-            Some(Token::LParen) => {
-                let expr = self.parse_or();
-                match self.next() {
-                    Some(Token::RParen) => expr,
-                    _ => panic!("[parse_factor] Could not find right bracket"),
-                }
-            }
-            _ => panic!("[parse_factor] Could not parse factor"),
-        }
-    }
+fn parse_factor(&mut self) -> AST {
+    match self.next() {
+        Some(Token::Ident(name)) => AST::Var(name.clone()),
 
-    fn parse_summand(&mut self) -> AST {
-        let mut ast = self.parse_factor();
+        Some(Token::Number(n)) => AST::Number(*n),
 
-        while let Some(Token::Mul | Token::Div) = self.peek() {
-            let op: Operator = match self.peek() {
-                Some(Token::Mul) => Operator::Multiplication,
-                Some(Token::Div) => Operator::Division,
-                _ => panic!("[parse_summand] Could not parse Operation"),
-            };
-            self.next();
+        Some(Token::Sub) => {
             let right = self.parse_factor();
-            ast = AST::Operation(Box::new(ast), op, Box::new(right));
+            AST::Operation(Box::new(AST::Number(0)), Operator::Subtraction, Box::new(right))
         }
-        ast
+
+        Some(Token::LParen) => {
+            let expr = self.parse_or();
+            match self.next() {
+                Some(Token::RParen) => expr,
+                _ => panic!("[parse_factor] Could not find right bracket"),
+            }
+        }
+
+        Some(Token::LSquare) => {
+            let size_expr = self.parse_or();
+            match self.next() {
+                Some(Token::RSquare) => AST::ArrayNew(Box::new(size_expr)),
+                _ => panic!("[parse_factor] Expected ']'"),
+            }
+        }
+
+        _ => panic!("[parse_factor] Could not parse factor"),
     }
+}
+
+fn parse_postfix(&mut self) -> AST {
+    let mut ast = self.parse_factor();
+
+    while let Some(Token::LSquare) = self.peek() {
+        self.next(); // consume '['
+        let index_expr = self.parse_or();
+        match self.next() {
+            Some(Token::RSquare) => {
+                ast = AST::Index(Box::new(ast), Box::new(index_expr));
+            }
+            _ => panic!("[parse_postfix] Expected ']'"),
+        }
+    }
+
+    ast
+}
+
+fn parse_summand(&mut self) -> AST {
+    let mut ast = self.parse_postfix();
+
+    while let Some(Token::Mul | Token::Div) = self.peek() {
+        let op: Operator = match self.peek() {
+            Some(Token::Mul) => Operator::Multiplication,
+            Some(Token::Div) => Operator::Division,
+            _ => panic!("[parse_summand] Could not parse Operation"),
+        };
+        self.next();
+        let right = self.parse_postfix();
+        ast = AST::Operation(Box::new(ast), op, Box::new(right));
+    }
+    ast
+}
 
     fn parse_expr(&mut self) -> AST {
         let mut ast = self.parse_summand();
@@ -178,6 +207,12 @@ impl Parser {
             return AST::Print(Box::new(expr));
         }
 
+        if let Some(Token::Println) = self.peek() {
+            self.next();
+            let expr = self.parse_or();
+            return AST::Println(Box::new(expr));
+        }
+
         if let Some(Token::Loop) = self.peek() {
             self.next();
             let loop_block = self.parse_block();
@@ -185,24 +220,52 @@ impl Parser {
         }
 
         if let Some(Token::Ident(name)) = self.peek() {
-            match self.tokens.get(self.index + 1) {
-                Some(Token::Assign) => {
-                    let name = name.clone();
-                    self.next();
-                    self.next();
-                    let expr = self.parse_or();
-                    return AST::Assign(name, Box::new(expr));
-                }
-                Some(Token::LazyAssign) => {
-                    let name = name.clone();
-                    self.next();
-                    self.next();
-                    let expr = self.parse_or();
-                    return AST::LazyAssign(name, Box::new(expr));
-                }
-                _ => {}
-            }
+    // assignment to variable: x = expr / x := expr
+    if matches!(self.tokens.get(self.index + 1), Some(Token::Assign | Token::LazyAssign)) {
+        let name = name.clone();
+        self.next(); // ident
+        let is_lazy = matches!(self.next(), Some(Token::LazyAssign)); // consumes Assign/LazyAssign
+        let expr = self.parse_or();
+        return if is_lazy {
+            AST::LazyAssign(name, Box::new(expr))
+        } else {
+            AST::Assign(name, Box::new(expr))
+        };
+    }
+
+// assignment to array element: arr[expr] = value / arr[expr] := value
+if matches!(self.tokens.get(self.index + 1), Some(Token::LSquare)) {
+    let arr_name = name.clone();
+    self.next(); // consume ident
+
+    match self.next() {
+        Some(Token::LSquare) => {}
+        _ => panic!("[parse_statement] Expected '[' after array name"),
+    }
+
+    let index_expr = self.parse_or();
+
+    match self.next() {
+        Some(Token::RSquare) => {}
+        _ => panic!("[parse_statement] Expected ']' after index"),
+    }
+
+    let op_tok = self.next().cloned();
+    let value_expr = self.parse_or();
+
+    return match op_tok {
+        Some(Token::Assign) => {
+            AST::AssignIndex(arr_name, Box::new(index_expr), Box::new(value_expr))
         }
+        Some(Token::LazyAssign) => {
+            AST::LazyAssignIndex(arr_name, Box::new(index_expr), Box::new(value_expr))
+        }
+        _ => panic!("[parse_statement] Expected '=' or ':=' after arr[index]"),
+    };
+}
+
+}
+
 
         self.parse_or()
     }

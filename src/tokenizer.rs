@@ -35,7 +35,10 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 }
                 if str == "print" {
                     tokens.push(Token::Print);
-                } else if str == "if" {
+                } 
+                else if str == "println" {
+                    tokens.push(Token::Println);
+                }else if str == "if" {
                     tokens.push(Token::If);
                 } else if str == "else" {
                     tokens.push(Token::Else);
@@ -101,7 +104,8 @@ pub fn tokenize(input: &str) -> Vec<Token> {
             }
             '{' => tokens.push(Token::LBrace),
             '}' => tokens.push(Token::RBrace),
-            
+            '[' => tokens.push(Token::LSquare),
+            ']' => tokens.push(Token::RSquare),
             ';' => tokens.push(Token::Semicolon),
             '=' => {
                 if let Some('=') = chars.next() {

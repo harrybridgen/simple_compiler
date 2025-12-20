@@ -5,7 +5,7 @@ use crate::grammar::Type;
 use std::collections::HashMap;
 
 pub struct VM {
-    stack: Vec<i32>,
+    stack: Vec<Type>,
     environment: HashMap<String, Type>,
     pointer: usize,
     code: Vec<Instruction>,
@@ -28,153 +28,269 @@ impl VM {
             labels,
         }
     }
+
     pub fn run(&mut self) {
         while self.pointer < self.code.len() {
-            let instruction = &self.code[self.pointer];
+            let instruction = self.code[self.pointer].clone();
+
+
             match instruction {
-                Instruction::Push(n) => self.stack.push(*n),
+                Instruction::Push(n) => self.stack.push(Type::Integer(n)),
+
                 Instruction::Store(name) => {
-                    let value = self.stack.pop().unwrap();
-                    self.environment.insert(name.clone(), Type::Integer(value));
+                    let value = self.stack.pop().expect("Stack underflow on Store");
+                    self.environment.insert(name.clone(), value);
                 }
+
                 Instruction::StoreLazy(name, ast) => {
                     self.environment
                         .insert(name.clone(), Type::LazyInteger(ast.clone()));
                 }
+
                 Instruction::Load(name) => {
-                    let value = self.environment.get(name).unwrap().clone();
-                    match value {
-                        Type::Integer(n) => self.stack.push(n),
-                        Type::LazyInteger(ast) => {
-                            let result = self.evaluate(*ast);
-                            self.stack.push(result);
-                        }
-                    }
+                    let value = self
+                        .environment
+                        .get(&name)
+                        .unwrap_or_else(|| panic!("Undefined variable: {name}"))
+                        .clone();
+
+                    // Do NOT coerce arrays here; preserve arrays as values.
+                    // Lazy integers evaluate on load (call-by-name semantics).
+                    let loaded = self.load_value(value);
+                    self.stack.push(loaded);
                 }
+
                 Instruction::Add => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    self.stack.push(b + a);
+                    let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack.push(Type::Integer(b + a));
                 }
+
+
                 Instruction::Mul => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    self.stack.push(b * a);
+                    let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack.push(Type::Integer(b * a));
                 }
+
                 Instruction::Div => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    self.stack.push(b / a);
+                                       let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack.push(Type::Integer(b / a));
                 }
+
                 Instruction::Sub => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    self.stack.push(b - a);
+                                       let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack.push(Type::Integer(b - a));
                 }
+
                 Instruction::Print => {
-                    let value = self.stack.pop().unwrap();
-                    println!("{value}");
+                    let v = self.stack.pop().expect("Stack underflow on Print");
+                    let n = self.as_int(v);
+                    print!("{n}");
                 }
+
+                Instruction::Println => {
+                    let v = self.stack.pop().expect("Stack underflow on Println");
+                    let n = self.as_int(v);
+                    println!("{n}");
+                }
+
                 Instruction::Greater => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    if b > a {
-                        self.stack.push(1);
-                    } else {
-                        self.stack.push(0);
-                    }
+                    let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack.push(Type::Integer(if b > a { 1 } else { 0 }));
                 }
+
                 Instruction::Less => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    if b < a {
-                        self.stack.push(1);
-                    } else {
-                        self.stack.push(0);
-                    }
+                    let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack.push(Type::Integer(if b < a { 1 } else { 0 }));
                 }
+
                 Instruction::Equal => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    if b == a {
-                        self.stack.push(1);
-                    } else {
-                        self.stack.push(0);
-                    }
+                    let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack.push(Type::Integer(if b == a { 1 } else { 0 }));
                 }
+
                 Instruction::Or => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    if b > 0 || a > 0 {
-                        self.stack.push(1);
-                    } else {
-                        self.stack.push(0);
-                    }
+                    let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack
+                        .push(Type::Integer(if b > 0 || a > 0 { 1 } else { 0 }));
                 }
+
                 Instruction::And => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    if b > 0 && a > 0 {
-                        self.stack.push(1);
-                    } else {
-                        self.stack.push(0);
-                    }
+                    let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack
+                        .push(Type::Integer(if b > 0 && a > 0 { 1 } else { 0 }));
                 }
-                Instruction::Label(_) => {}
-                Instruction::Jump(str) => {
-                    self.pointer = *self.labels.get(str).unwrap();
+
+                Instruction::GreaterEqual => {
+                    let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack
+                        .push(Type::Integer(if b > a || b == a { 1 } else { 0 }));
+                }
+
+                Instruction::LessEqual => {
+                    let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack
+                        .push(Type::Integer(if b < a || b == a { 1 } else { 0 }));
+                }
+
+                Instruction::NotEqual => {
+                    let a = self.pop_int("Stack underflow on Add (a)");
+                    let b = self.pop_int("Stack underflow on Add (b)");
+                    self.stack.push(Type::Integer(if b != a { 1 } else { 0 }));
+                }
+
+                Instruction::Label(_) => {
+                    // no-op
+                }
+
+                Instruction::Jump(label) => {
+                    self.pointer = *self
+                        .labels
+                        .get(&label)
+                        .unwrap_or_else(|| panic!("Unknown label: {label}"));
                     continue;
                 }
-                Instruction::JumpIfZero(str) => {
-                    let value = self.stack.pop();
-                    if value == Some(0) {
-                        self.pointer = *self.labels.get(str).unwrap();
+
+                Instruction::JumpIfZero(label) => {
+                    let value = self.pop_int("Stack underflow on Add (a)");
+                    if value == 0 {
+                        self.pointer = *self
+                            .labels
+                            .get(&label)
+                            .unwrap_or_else(|| panic!("Unknown label: {label}"));
                         continue;
                     }
                 }
-                Instruction::GreaterEqual => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    if b > a || a == b{
-                        self.stack.push(1);
-                    } else {
-                        self.stack.push(0);
+
+                Instruction::ArrayNew => {
+                    let size_v = self.stack.pop().expect("Stack underflow on ArrayNew");
+                    let size = self.as_int(size_v);
+                    if size < 0 {
+                        panic!("Array size cannot be negative");
+                    }
+
+                    let mut items = Vec::with_capacity(size as usize);
+                    for _ in 0..(size as usize) {
+                        items.push(Type::Integer(0));
+                    }
+
+                    self.stack.push(Type::Array(items));
+                }
+
+                Instruction::ArrayGet => {
+                    let index_v = self.stack.pop().expect("Stack underflow on ArrayGet (index)");
+                    let array_v = self.stack.pop().expect("Stack underflow on ArrayGet (array)");
+
+                    let idx = self.as_int(index_v);
+                    if idx < 0 {
+                        panic!("Array index cannot be negative");
+                    }
+
+                    match array_v {
+                        Type::Array(items) => {
+                            let elem = items
+                                .get(idx as usize)
+                                .unwrap_or_else(|| panic!("Index out of bounds"))
+                                .clone();
+
+                            // If element is lazy, evaluate now when read.
+                            let elem = self.load_value(elem);
+                            self.stack.push(elem);
+                        }
+                        other => panic!("Tried to index non-array value: {:?}", other),
                     }
                 }
-                Instruction::LessEqual => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    if b < a || a == b{
-                        self.stack.push(1);
-                    } else {
-                        self.stack.push(0);
+
+                Instruction::StoreIndex(name) => {
+                    let value = self.stack.pop().expect("Stack underflow on StoreIndex (value)");
+                    let index_v = self.stack.pop().expect("Stack underflow on StoreIndex (index)");
+                    let idx = self.as_int(index_v);
+
+                    if idx < 0 {
+                        panic!("Array index cannot be negative");
+                    }
+
+                    let entry = self
+                        .environment
+                        .get_mut(&name)
+                        .unwrap_or_else(|| panic!("Undefined variable: {name}"));
+
+                    match entry {
+                        Type::Array(items) => {
+                            let i = idx as usize;
+                            if i >= items.len() {
+                                panic!("Index out of bounds");
+                            }
+                            items[i] = value;
+                        }
+                        other => panic!("Tried to index-assign into non-array value: {:?}", other),
                     }
                 }
-                Instruction::NotEqual => {
-                    let a = self.stack.pop().unwrap();
-                    let b = self.stack.pop().unwrap();
-                    if  a != b{
-                        self.stack.push(1);
-                    } else {
-                        self.stack.push(0);
+
+                Instruction::StoreIndexLazy(name, ast) => {
+                    let index_v =
+                        self.stack.pop().expect("Stack underflow on StoreIndexLazy (index)");
+                    let idx = self.as_int(index_v);
+
+                    if idx < 0 {
+                        panic!("Array index cannot be negative");
+                    }
+
+                    let entry = self
+                        .environment
+                        .get_mut(&name)
+                        .unwrap_or_else(|| panic!("Undefined variable: {name}"));
+
+                    match entry {
+                        Type::Array(items) => {
+                            let i = idx as usize;
+                            if i >= items.len() {
+                                panic!("Index out of bounds");
+                            }
+                            items[i] = Type::LazyInteger(ast.clone());
+                        }
+                        other => panic!("Tried to lazy index-assign into non-array value: {:?}", other),
                     }
                 }
             }
-            //self.dump(instruction);
+
+            // self.dump(instruction);
             self.pointer += 1;
         }
     }
 
+    /// Evaluates an AST to an integer value (used for lazy integers).
+    /// NOTE: This currently does NOT support arrays in the lazy evaluator.
+    /// If you use Index(...) or ArrayNew(...) inside lazy expressions,
+    /// you should extend this evaluator (recommended).
     fn evaluate(&self, ast: AST) -> i32 {
         match ast {
             AST::Number(n) => n,
+
             AST::Var(name) => {
-                let var = self.environment.get(&name).unwrap().clone();
+                let var = self
+                    .environment
+                    .get(&name)
+                    .unwrap_or_else(|| panic!("Undefined variable: {name}"))
+                    .clone();
+
                 match var {
                     Type::Integer(n) => n,
                     Type::LazyInteger(ast) => self.evaluate(*ast),
+                    Type::Array(items) => items.len() as i32, // coercion rule for arrays
                 }
             }
+
             AST::Operation(left, op, right) => {
                 let l = self.evaluate(*left);
                 let r = self.evaluate(*right);
@@ -184,64 +300,65 @@ impl VM {
                     Operator::Multiplication => l * r,
                     Operator::Division => l / r,
                     Operator::Subtraction => l - r,
+
                     Operator::Greater => {
-                        if l > r {
-                            1
-                        } else {
-                            0
-                        }
+                        if l > r { 1 } else { 0 }
                     }
                     Operator::Less => {
-                        if l < r {
-                            1
-                        } else {
-                            0
-                        }
+                        if l < r { 1 } else { 0 }
                     }
                     Operator::GreaterEqual => {
-                        if l > r || l == r {
-                            1
-                        } else {
-                            0
-                        }
+                        if l > r || l == r { 1 } else { 0 }
                     }
                     Operator::LessEqual => {
-                        if l < r || l == r  {
-                            1
-                        } else {
-                            0
-                        }
+                        if l < r || l == r { 1 } else { 0 }
                     }
                     Operator::NotEqual => {
-                        if l != r {
-                            1
-                        } else {
-                            0
-                        }
+                        if l != r { 1 } else { 0 }
                     }
                     Operator::Equal => {
-                        if l == r {
-                            1
-                        } else {
-                            0
-                        }
+                        if l == r { 1 } else { 0 }
                     }
                     Operator::Or => {
-                        if l > 0 || r > 0 {
-                            1
-                        } else {
-                            0
-                        }
+                        if l > 0 || r > 0 { 1 } else { 0 }
                     }
                     Operator::And => {
-                        if l > 0 && r > 0 {
-                            1
-                        } else {
-                            0
-                        }
+                        if l > 0 && r > 0 { 1 } else { 0 }
                     }
                 }
             }
+            AST::Index(base, index) => {
+                let base_val = match *base {
+                    AST::Var(name) => self
+                        .environment
+                        .get(&name)
+                        .unwrap_or_else(|| panic!("Undefined variable: {name}"))
+                        .clone(),
+                    other => panic!("Index base must be a variable in lazy eval: {:?}", other),
+                };
+
+                let idx = self.evaluate(*index);
+                if idx < 0 {
+                    panic!("Array index cannot be negative");
+                }
+
+                match base_val {
+                    Type::Array(items) => {
+                        let elem = items
+                            .get(idx as usize)
+                            .unwrap_or_else(|| panic!("Index out of bounds"))
+                            .clone();
+
+                        match elem {
+                            Type::Integer(n) => n,
+                            Type::LazyInteger(ast) => self.evaluate(*ast),
+                            Type::Array(items) => items.len() as i32, // consistent coercion
+                        }
+                    }
+                    other => panic!("Tried to index non-array value in lazy eval: {:?}", other),
+                }
+            }
+
             _ => panic!("Error in AST evaluator"),
         }
     }
@@ -254,4 +371,33 @@ impl VM {
             self.environment
         );
     }
+
+    /// Coerce a runtime value to an integer.
+    /// - Integer -> itself
+    /// - LazyInteger -> evaluated
+    /// - Array -> its length
+    fn as_int(& self, v: Type) -> i32 {
+        match v {
+            Type::Integer(n) => n,
+            Type::LazyInteger(ast) => self.evaluate(*ast),
+            Type::Array(items) => items.len() as i32,
+        }
+    }
+
+    /// Force a value if it's a lazy integer; otherwise return as-is.
+    fn load_value(& self, v: Type) -> Type {
+        match v {
+            Type::LazyInteger(ast) => Type::Integer(self.evaluate(*ast)),
+            other => other,
+        }
+    }
+
+    fn pop(&mut self, msg: &str) -> Type {
+    self.stack.pop().unwrap_or_else(|| panic!("{msg}"))
+}
+
+fn pop_int(&mut self, msg: &str) -> i32 {
+    let v = self.pop(msg);
+    self.as_int(v)
+}
 }
