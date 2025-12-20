@@ -18,7 +18,7 @@ Immutable variables are scoped and cannot be overwritten. Reactive variables re-
 
 ## Arrays
 - Created with `someArr = [size];`
-- Indexed with `array[index] = 5;`
+- Indexed with `someArr[index] = 5;`
 - Support mutable (`=`) and reactive (`::=`) element assignment
 - Bounds are checked at runtime
 
