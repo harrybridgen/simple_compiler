@@ -83,7 +83,7 @@ loop {
         break;
     }
 
-    x = dx; # advances dx by +1 #
+    x = dx; # advances x by +1 #
 }
 ```
 ### Array Dependency Chain
