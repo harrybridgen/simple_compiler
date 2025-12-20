@@ -108,7 +108,7 @@ use std::collections::HashSet;
 pub enum Type {
     Integer(i32),
     LazyInteger(Box<AST>),
-    Array(Vec<Type>),
+    ArrayRef(usize),
 
     Function {
         params: Vec<String>,

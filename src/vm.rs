@@ -10,6 +10,7 @@ pub struct VM {
     labels: HashMap<String, usize>,
     struct_defs: HashMap<String, Vec<(String, Option<StructFieldInit>)>>,
     heap: Vec<StructInstance>,
+    array_heap: Vec<Vec<Type>>,
 }
 
 impl VM {
@@ -23,7 +24,7 @@ impl VM {
             code,
             labels,
             struct_defs: HashMap::new(),
-            heap: Vec::new(),
+            heap: Vec::new(),array_heap: Vec::new(),
         }
     }
 
@@ -168,8 +169,9 @@ impl VM {
                         let v = self.pop();
                         self.as_int(v)
                     };
-                    self.stack
-                        .push(Type::Array(vec![Type::Integer(0); n as usize]));
+                    let id = self.array_heap.len();
+                    self.array_heap.push(vec![Type::Integer(0); n as usize]);
+                    self.stack.push(Type::ArrayRef(id));
                 }
 
                 Instruction::ArrayGet => {
@@ -181,8 +183,8 @@ impl VM {
                     let arr = self.pop();
 
                     match arr {
-                        Type::Array(v) => {
-                            let elem = v.get(idx).cloned().unwrap();
+                        Type::ArrayRef(id) => {
+                            let elem = self.array_heap[id].get(idx).cloned().unwrap();
                             let out = self.load_value(elem);
                             self.stack.push(out);
                         }
@@ -191,40 +193,49 @@ impl VM {
                 }
 
                 Instruction::StoreIndex(name) => {
-                    if self.immutable_exists(&name) {
-                        panic!()
-                    }
                     let val = self.pop();
                     let idx = {
                         let v = self.pop();
                         self.as_int(v) as usize
                     };
-                    let entry = self.environment.get_mut(&name).unwrap();
-                    match entry {
-                        Type::Array(v) => {
-                            v[idx] = val;
+
+                    let target = self
+                        .find_immutable(&name)
+                        .cloned()
+                        .or_else(|| self.environment.get(&name).cloned())
+                        .unwrap();
+
+                    match target {
+                        Type::ArrayRef(id) => {
+                            self.array_heap[id][idx] = val;
                         }
                         _ => panic!(),
                     }
                 }
 
+
                 Instruction::StoreIndexReactive(name, ast) => {
-                    if self.immutable_exists(&name) {
-                        panic!()
-                    }
                     let idx = {
                         let v = self.pop();
                         self.as_int(v) as usize
                     };
+
                     let frozen = self.freeze_ast(ast);
-                    let entry = self.environment.get_mut(&name).unwrap();
-                    match entry {
-                        Type::Array(v) => {
-                            v[idx] = Type::LazyInteger(frozen);
+
+                    let target = self
+                        .find_immutable(&name)
+                        .cloned()
+                        .or_else(|| self.environment.get(&name).cloned())
+                        .unwrap();
+
+                    match target {
+                        Type::ArrayRef(id) => {
+                            self.array_heap[id][idx] = Type::LazyInteger(frozen);
                         }
                         _ => panic!(),
                     }
                 }
+
 
                 Instruction::StoreFunction(name, params, body) => {
                     self.environment.insert(name, Type::Function { params, body });
@@ -339,35 +350,43 @@ impl VM {
         }
     }
 
-    fn instantiate_struct(&mut self, fields: Vec<(String, Option<StructFieldInit>)>) -> Type {
-        let mut map = HashMap::new();
-        let mut imm = HashSet::new();
+fn instantiate_struct(&mut self, fields: Vec<(String, Option<StructFieldInit>)>) -> Type {
+    let mut map = HashMap::new();
+    let mut imm = HashSet::new();
 
-        for (name, init) in fields {
-            match init {
-                None => {
-                    map.insert(name, Type::Integer(0));
-                }
-                Some(StructFieldInit::Mutable(ast)) => {
-                    let n = self.evaluate(ast);
-                    map.insert(name, Type::Integer(n));
-                }
-                Some(StructFieldInit::Immutable(ast)) => {
-                    let n = self.evaluate(ast);
-                    imm.insert(name.clone());
-                    map.insert(name, Type::Integer(n));
-                }
-                Some(StructFieldInit::Reactive(ast)) => {
-                    let frozen = self.freeze_ast(Box::new(ast));
-                    map.insert(name, Type::LazyInteger(frozen));
-                }
+    for (name, init) in fields {
+        match init {
+            None => {
+                map.insert(name, Type::Integer(0));
+            }
+
+            Some(StructFieldInit::Mutable(ast)) => {
+                let v = self.eval_value(ast);
+                map.insert(name, v);
+            }
+
+            Some(StructFieldInit::Immutable(ast)) => {
+                let v = self.eval_value(ast);
+                imm.insert(name.clone());
+                map.insert(name, v);
+            }
+
+            Some(StructFieldInit::Reactive(ast)) => {
+                let frozen = self.freeze_ast(Box::new(ast));
+                map.insert(name, Type::LazyInteger(frozen));
             }
         }
-
-        let id = self.heap.len();
-        self.heap.push(StructInstance { fields: map, immutables: imm });
-        Type::StructRef(id)
     }
+
+    let id = self.heap.len();
+    self.heap.push(StructInstance {
+        fields: map,
+        immutables: imm,
+    });
+
+    Type::StructRef(id)
+}
+
 
     fn call_function(&mut self, f: Type, args: Vec<Type>) -> Type {
         match f {
@@ -456,21 +475,19 @@ fn execute_ast(&mut self, ast: AST) {
                 }
             }
 
-            AST::Index(base, index) => {
-                let idx = self.evaluate(*index) as usize;
-                let arr = match *base {
-                    AST::Var(name) => self
-                        .find_immutable(&name)
-                        .cloned()
-                        .or_else(|| self.environment.get(&name).cloned())
-                        .unwrap(),
-                    _ => panic!(),
-                };
-                match arr {
-                    Type::Array(v) => self.as_int(v.get(idx).cloned().unwrap()),
-                    _ => panic!(),
-                }
-            }
+AST::Index(base, index) => {
+    let idx = self.evaluate(*index) as usize;
+    let arr = self.eval_value(*base);
+
+    match arr {
+        Type::ArrayRef(id) => {
+            let elem = self.array_heap[id].get(idx).cloned().unwrap();
+            self.as_int(elem)
+        }
+        _ => panic!(),
+    }
+}
+
 
             AST::FieldAccess(base, field) => {
                 let obj = self.eval_value(*base);
@@ -503,7 +520,10 @@ fn execute_ast(&mut self, ast: AST) {
                 self.as_int(out) 
             }
 
-            _ => panic!(),
+            other => {
+                println!("evaluate(): unsupported AST: {other:?}");
+                panic!()
+            }
         }
     }
 fn eval_reactive_field(&mut self, id: usize, ast: AST) -> Type {
@@ -516,50 +536,62 @@ fn eval_reactive_field(&mut self, id: usize, ast: AST) -> Type {
         }
     }
 
-    let result = Type::Integer(self.evaluate(ast));
+    let result = self.eval_value(ast);
 
     self.immutable_stack.pop();
     result
 }
 
+
 fn eval_value(&mut self, ast: AST) -> Type {
     match ast {
         AST::Number(n) => Type::Integer(n),
 
-        AST::Var(name) => {
-            self.find_immutable(&name)
-                .cloned()
-                .or_else(|| self.environment.get(&name).cloned())
-                .unwrap()
+        AST::Var(name) => self
+            .find_immutable(&name)
+            .cloned()
+            .or_else(|| self.environment.get(&name).cloned())
+            .unwrap(),
+
+        AST::ArrayNew(size_ast) => {
+            let n = self.evaluate(*size_ast) as usize;
+            let id = self.array_heap.len();
+            self.array_heap.push(vec![Type::Integer(0); n]);
+            Type::ArrayRef(id)
         }
 
-AST::FieldAccess(base, field) => {
-    let obj = self.eval_value(*base);
-    match obj {
-        Type::StructRef(id) => {
-            let v = self.heap[id].fields.get(&field).cloned().unwrap();
-            match v {
-                Type::LazyInteger(ast) => self.eval_reactive_field(id, *ast),
-                other => other,
+        AST::FieldAccess(base, field) => {
+            let obj = self.eval_value(*base);
+            match obj {
+                Type::StructRef(id) => {
+                    let v = self.heap[id].fields.get(&field).cloned().unwrap();
+                    match v {
+                        Type::LazyInteger(ast) => self.eval_reactive_field(id, *ast),
+                        other => other,
+                    }
+                }
+                _ => panic!(),
             }
+        }
+
+AST::Index(base, index) => {
+    let idx = self.evaluate(*index) as usize;
+    let arr = self.eval_value(*base);
+
+    match arr {
+        Type::ArrayRef(id) => {
+            let elem = self.array_heap[id].get(idx).cloned().unwrap();
+            self.load_value(elem)
         }
         _ => panic!(),
     }
 }
 
-        AST::Index(base, index) => {
-            let idx = self.evaluate(*index) as usize;
-            let arr = self.eval_value(*base);
-            match arr {
-                Type::Array(v) => v[idx].clone(),
-                _ => panic!(),
-            }
-        }
 
         AST::Call { name, args } => {
-            let mut vals = Vec::new();
+            let mut vals = Vec::with_capacity(args.len());
             for a in args {
-                vals.push(Type::Integer(self.evaluate(a)));
+                vals.push(self.eval_value(a));
             }
             let f = self.environment.get(&name).cloned().unwrap();
             self.call_function(f, vals)
@@ -572,11 +604,12 @@ AST::FieldAccess(base, field) => {
 }
 
 
+
     fn as_int(&mut self, v: Type) -> i32 {
         match v {
             Type::Integer(n) => n,
             Type::LazyInteger(ast) => self.evaluate(*ast),
-            Type::Array(v) => v.len() as i32,
+            Type::ArrayRef(id) => self.array_heap[id].len() as i32,
             Type::StructRef(_) => panic!(),
             Type::Function { .. } => panic!(),
         }
