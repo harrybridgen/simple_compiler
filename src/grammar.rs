@@ -1,22 +1,68 @@
-// program     ::= statement (';' statement)* ';'?
+// program        ::= statement (";" statement)* ";"?
 
-// statement   ::= identifier "=" expression
-//               | identifier ":=" expression
-//               | identifier "::=" expression
-//               | print expression
-//               | println expression
-//               | expression
+// statement      ::= assignment
+//                  | array_assignment
+//                  | reactive_assignment
+//                  | immutable_assignment
+//                  | if_statement
+//                  | loop_statement
+//                  | break_statement
+//                  | print_statement
+//                  | println_statement
+//                  | expression
 
-// expression  ::= summand (("+" | "-") summand)*
+// assignment     ::= identifier "=" expression
 
-// summand     ::= factor (("*" | "/") factor)*
+// reactive_assignment
+//                 ::= identifier "::=" expression
 
-// factor      ::= "-" factor
-//               | number
-//               | identifier
-//               | "(" expression ")"
+// immutable_assignment
+//                 ::= identifier ":=" expression
 
-// comment     ::=    #COMMENT HERE#
+// array_assignment
+//                 ::= identifier "[" expression "]" "=" expression
+//                  | identifier "[" expression "]" "::=" expression
+
+// if_statement   ::= "if" expression block ("else" block)?
+
+// loop_statement ::= "loop" block
+
+// break_statement
+//                 ::= "break"
+
+// block          ::= "{" statement (";" statement)* ";"? "}"
+
+// print_statement
+//                 ::= "print" expression
+
+// println_statement
+//                 ::= "println" expression
+
+// expression     ::= or_expr
+
+// or_expr        ::= and_expr ("||" and_expr)*
+
+// and_expr       ::= comparison ("&&" comparison)*
+
+// comparison     ::= additive ((">" | "<" | ">=" | "<=" | "==" | "!=") additive)*
+
+// additive       ::= multiplicative (("+" | "-") multiplicative)*
+
+// multiplicative ::= postfix (("*" | "/") postfix)*
+
+// postfix        ::= factor ("[" expression "]")*
+
+// factor         ::= number
+//                  | identifier
+//                  | "-" factor
+//                  | "(" expression ")"
+//                  | "[" expression "]"     // array creation
+
+// identifier     ::= [a-zA-Z][a-zA-Z0-9]*
+// number         ::= [0-9]+
+
+// comment        ::= "#" .* "#"
+
 
 #[derive(Debug, Clone)]
 pub enum Token {
