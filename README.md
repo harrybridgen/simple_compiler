@@ -208,6 +208,19 @@ matrix[1][1] = 5;
 c = matrix[1][1];
 println c; # 5 #
 ```
+
+### Reactive Array Relationships
+
+Reactive assignments to array elements capture relationships between values.
+```haskell
+base = 0;
+arr[0] ::= base;
+arr[1] ::= arr[0] + 1;
+base = arr[1];
+println arr[1]; # 2 #
+```
+Changing any dependency automatically updates dependent elements.
+
 ### Arrays and Structs
 
 Arrays may contain structs, and struct fields may contain arrays.
@@ -240,18 +253,6 @@ println c.m[0][0].yy;  # 10 #
 c.m[0][0].y = 7;
 println c.m[0][0].yy;  # 14 #
 ```
-
-### Reactive Array Relationships
-
-Reactive assignments to array elements capture relationships between values.
-```haskell
-base = 0;
-arr[0] ::= base;
-arr[1] ::= arr[0] + 1;
-base = arr[1];
-println arr[1]; # 2 #
-```
-Changing any dependency automatically updates dependent elements.
 
 ## Functions
 
