@@ -336,7 +336,7 @@ objects. As a result:
 
 For example, this is NOT allowed:
 ```haskell
-r ::= twosum(nums, 9); # twosum returns a struct
+r ::= twosum(nums, 9); # twosum returns a Pair struct
 ```
 However, struct *fields* may be bound reactively, since field access
 evaluates to an integer:
