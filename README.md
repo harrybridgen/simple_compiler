@@ -22,7 +22,37 @@ Arrays evaluate to their length when used as integers.
   Reactive assignments capture dependencies, not values.
   Changing any dependency updates the result.
 
+## Structs
 
+Structs define heap-allocated records with named fields.
+
+### Struct Definition
+```haskell
+struct Counter {
+    x = 0;
+    step := 1;
+    next ::= x + step;
+}
+```
+### Field Kinds
+- = mutable field
+- := immutable field (cannot be modified)
+- ::= reactive field (re-evaluated on access)
+
+Reactive fields may depend on other fields in the same struct.
+Reactive fields are evaluated with the struct’s fields temporarily bound as immutable variables.
+
+### Creating Struct Instances
+```haskell
+c = struct Counter;
+```
+
+### Field Access and Assignment
+```haskell
+println c.x;
+c.x = 10;
+println c.next;
+```
 ## Arrays
 
 Arrays are fixed-size, heap-allocated containers of values.
@@ -75,38 +105,6 @@ base = arr[1];
 println arr[1]; # 2 #
 ```
 Changing any dependency automatically updates dependent elements.
-
-## Structs
-
-Structs define heap-allocated records with named fields.
-
-### Struct Definition
-```haskell
-struct Counter {
-    x = 0;
-    step := 1;
-    next ::= x + step;
-}
-```
-### Field Kinds
-- = mutable field
-- := immutable field (cannot be modified)
-- ::= reactive field (re-evaluated on access)
-
-Reactive fields may depend on other fields in the same struct.
-Reactive fields are evaluated with the struct’s fields temporarily bound as immutable variables.
-
-### Creating Struct Instances
-```haskell
-c = struct Counter;
-```
-
-### Field Access and Assignment
-```haskell
-println c.x;
-c.x = 10;
-println c.next;
-```
 
 ## Functions
 
