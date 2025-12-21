@@ -12,16 +12,112 @@ This is a small expression-oriented language compiled to bytecode and executed o
 Arrays evaluate to their length when used as integers.
 
 ## Variables and Assignment
-- `=` mutable assignment  
-  Using `=` inside a function mutates the global environment.
 
-- `:=` immutable assignment (cannot be reassigned)  
-  Immutable variables are scoped and cannot be overwritten.
+The language has **three assignment forms**, each with a distinct meaning.
 
-- `::=` reactive (lazy) assignment, evaluated when read  
-  Reactive assignments capture dependencies, not values.
-  Changing any dependency updates the result.
+### `=` Mutable Assignment (global locations)
 
+`=` creates or mutates a **global location**.
+```haskell
+x = 10;
+arr = [5];
+```
+
+Inside a struct, `=` fields refer to the same global location for all instances.
+```haskell
+struct A {
+    x = 0;
+}
+
+a = struct A;
+b = struct A;
+
+a.x = 5;
+println b.x;   # 5 #
+```
+
+All structs share the same location when `=` is used.
+
+### `::=` Reactive Assignment (relationships)
+
+`::=` defines a **relationship** between locations.  
+It stores an expression and its dependencies, not a value.
+```haskell
+y ::= x + 1;
+```
+
+The expression is evaluated **when read**.  
+If any dependency changes, the result updates automatically.
+
+`::=` Reactive assignments:
+- capture **dependencies**, not snapshots
+- are lazy and pure
+- attach to the **location**, not the name
+
+They are commonly used to build **progression variables** in loops:
+```haskell
+x = 0;
+dx ::= x + 1;
+
+loop {
+    println x;
+    if x >= 4 { break; }
+    x = dx;
+}
+```
+
+Here, `dx` defines how `x` advances, while `=` controls when the update occurs.
+
+Reactive assignments work uniformly for **variables, struct fields, and array elements**:
+
+```haskell
+c.next ::= c.x + c.step;
+arr[1] ::= arr[0] + 1;
+```
+
+Relationships attach to the underlying field or element, so all aliases observe the same behavior.
+
+Reactive assignments may depend on literals, other locations, and immutable bindings (`:=`).  
+
+Reactive relationships remain fixed unless explicitly reassigned.
+
+### `:=` Immutable Binding (capture / identity)
+
+`:=` creates a **new immutable binding**.  
+It does **not** create or reference a global location and does **not** participate in the reactive graph.
+
+This is required when capturing values in loops:
+
+```haskell
+loop {
+    i := x;                # capture current value
+    arr[i] ::= arr[i-1] + 1;
+    x = x + 1;
+}
+```
+
+Here, `i` freezes the value of `x` for each iteration.  
+Without `:=`, reactive assignments would refer to a moving variable and the graph would be incorrect.
+
+### `:=` and Arrays in Structs
+
+When a struct field holds an array or struct, `:=` creates a **per-instance object identity**.
+
+```
+struct Container {
+    data := [5];
+}
+``
+c1 = struct Container;
+c2 = struct Container;
+
+c1.data[0] = 10;
+println c2.data[0];   # 0 #
+```
+
+Each instance owns its own array.
+
+Using `=` instead would cause all instances to share the same global array.
 ## Structs
 
 Structs define heap-allocated records with named fields.
