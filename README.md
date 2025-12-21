@@ -91,7 +91,49 @@ println c; # 5 #
 Arrays may contain structs, and struct fields may contain arrays.
 Field access (`.`) and indexing (`[]`) can be freely combined.
 ```haskell
-x = c.m[0][0].y;
+# A cell stored inside a matrix #
+struct Cell {
+    value = 0;
+    doubled ::= value * 2;
+}
+
+# A container holding a 2D array of cells #
+struct Grid {
+    m = [2];
+}
+
+# create grid #
+g = struct Grid;
+
+# allocate 2x2 array #
+g.m[0] = [2];
+g.m[1] = [2];
+
+# fill grid with Cell structs #
+g.m[0][0] = struct Cell;
+g.m[0][1] = struct Cell;
+g.m[1][0] = struct Cell;
+g.m[1][1] = struct Cell;
+
+# assign values #
+g.m[0][0].value = 10;
+g.m[0][1].value = 20;
+g.m[1][0].value = 30;
+g.m[1][1].value = 40;
+
+# access nested fields #
+println g.m[0][0].value;    # 10 #
+println g.m[0][0].doubled;  # 20 #
+
+# mutate a deeply nested field #
+g.m[1][1].value = 7;
+
+# reactive field updates automatically #
+println g.m[1][1].doubled;  # 14 #
+
+# expressions can freely mix indexing and field access #
+x = g.m[1][0].value + g.m[0][1].doubled;
+println x; # 30 + 40 = 70 #
 ```
 
 ### Reactive Array Relationships
