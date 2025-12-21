@@ -332,6 +332,87 @@ func f() {
 y = f();
 y = 10;   # allowed
 ```
+## Imports and Modules
+
+The language supports file-based imports using dot-separated paths.
+
+```haskell
+import std.maths;
+import game.entities.player;
+```
+
+### Import Semantics
+
+- Imports load and execute another source file exactly once
+- Imported symbols (functions, structs, globals) become globally available
+- Imports are not namespaced
+- Import order matters
+- Re-importing the same module is ignored
+
+Imports are resolved relative to the program root by translating dots into folders.
+```haskell
+import game.entities.player;
+```
+
+Resolves to:
+```
+game/entities/player.hs
+```
+
+### Nested Folders
+
+Arbitrarily deep folder structures are supported.
+
+Example project layout:
+```
+project/
+├── main.hs
+├── std/
+│   └── maths.hs
+└── game/
+    └── entities/
+        └── player.hs
+```
+### Example
+game/entities/player.hs:
+```haskell
+struct Player {
+    x = 0;
+    y = 0;
+}
+
+func makeplayer(x, y) {
+    p := struct Player;
+    p.x = x;
+    p.y = y;
+    return p;
+}
+```
+
+main.hs:
+```haskell
+import game.entities.player;
+
+player = makeplayer(10, 5);
+println player.x;
+println player.y;
+```
+### Standard Library (std)
+
+The standard library is implemented as ordinary source files under the std/ folder.
+There is no special treatment for standard modules.
+```
+std/
+├── maths.hs
+├── array.hs
+├── logic.hs
+└── debug.hs
+```
+
+Modules are imported like any other file:
+```
+import std.maths;
+```
 
 ## Examples
 
