@@ -3,3 +3,5 @@
 /rx-vscode/.vscode
 /rx-vscode/node_modules
 /rx-vscode/*.vsix
+/rx-vscode/*.vsix
+/rx-vscode/vsc-extension-quickstart.md
