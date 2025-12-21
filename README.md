@@ -407,6 +407,7 @@ A.m[0][0] = 10;
 println C.m[0][0];  # 10*5 + 2*7 = 64 #
 println C.m[0][1];  # 10*6 + 2*8 = 76 #
 println C.m[1][0];  # unchanged: 43 #
+println C.m[1][1];  # unchanged: 50 #
 ```
 
 ### Bank Account with reactive fields
