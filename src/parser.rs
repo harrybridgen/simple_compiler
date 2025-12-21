@@ -1,4 +1,4 @@
-use crate::grammar::{AST, Operator, StructFieldInit, Token, FieldAssignKind};
+use crate::grammar::{AST, Operator, StructFieldInit, Token};
 
 struct Parser {
     tokens: Vec<Token>,
@@ -346,6 +346,7 @@ impl Parser {
         if let Some(Token::Func) = self.peek() {
             return self.parse_func_def();
         }
+
         if let Some(Token::Struct) = self.peek() {
             if matches!(self.peek_n(2), Some(Token::LBrace)) {
                 return self.parse_struct_def();
@@ -389,41 +390,15 @@ impl Parser {
                 Some(Token::Assign | Token::ReactiveAssign | Token::ImmutableAssign)
             ) {
                 let name = name.clone();
-                self.next();
-                let op = self.next().cloned();
-                let expr = self.parse_or();
-                return match op {
-                    Some(Token::Assign) => AST::Assign(name, Box::new(expr)),
-                    Some(Token::ReactiveAssign) => AST::ReactiveAssign(name, Box::new(expr)),
-                    Some(Token::ImmutableAssign) => AST::ImmutableAssign(name, Box::new(expr)),
-                    _ => unreachable!(),
-                };
-            }
-
-            if matches!(self.peek_n(1), Some(Token::LSquare)) {
-                let arr_name = name.clone();
                 self.next(); 
+                let op = self.next().cloned().unwrap();
+                let expr = self.parse_or();
 
-                self.expect(Token::LSquare);
-                let index_expr = self.parse_or();
-                self.expect(Token::RSquare);
-
-                let op_tok = self.next().cloned();
-                let value_expr = self.parse_or();
-
-                return match op_tok {
-                    Some(Token::Assign) => {
-                        AST::AssignIndex(arr_name, Box::new(index_expr), Box::new(value_expr))
-                    }
-                    Some(Token::ReactiveAssign) => AST::ReactiveAssignIndex(
-                        arr_name,
-                        Box::new(index_expr),
-                        Box::new(value_expr),
-                    ),
-                    Some(Token::ImmutableAssign) => {
-                        panic!("[parse_statement] Immutable ':=' is not valid after arr[index]")
-                    }
-                    _ => panic!("[parse_statement] Expected '=' or '::=' after arr[index]"),
+                return match op {
+                    Token::Assign => AST::Assign(name, Box::new(expr)),
+                    Token::ReactiveAssign => AST::ReactiveAssign(name, Box::new(expr)),
+                    Token::ImmutableAssign => AST::ImmutableAssign(name, Box::new(expr)),
+                    _ => unreachable!(),
                 };
             }
         }
@@ -431,38 +406,24 @@ impl Parser {
         let expr = self.parse_or();
 
         match self.peek() {
-            Some(Token::Assign) | Some(Token::ReactiveAssign) | Some(Token::ImmutableAssign) => {
-                let op = self.next().cloned().unwrap();
+            Some(Token::Assign) => {
+                self.next();
                 let rhs = self.parse_or();
-
-                if let AST::FieldAccess(base, field) = expr {
-
-                    match op {
-                        Token::Assign | Token::ReactiveAssign | Token::ImmutableAssign => {
-                            let kind = match op {
-                                Token::Assign => FieldAssignKind::Normal,
-                                Token::ReactiveAssign => FieldAssignKind::Reactive,
-                                Token::ImmutableAssign => FieldAssignKind::Immutable,
-                                _ => unreachable!(),
-                            };
-
-                            return AST::FieldAssign {
-                                base,
-                                field,
-                                value: Box::new(rhs),
-                                kind,
-                            };
-                        }
-                        _ => unreachable!(),
-                    }
-                } else {
-                    panic!("Left-hand side of field assignment must be a field access");
-                }
+                AST::AssignTarget(Box::new(expr), Box::new(rhs))
             }
-            _ => {}
-        }
 
-        expr
+            Some(Token::ReactiveAssign) => {
+                self.next();
+                let rhs = self.parse_or();
+                AST::ReactiveAssignTarget(Box::new(expr), Box::new(rhs))
+            }
+
+            Some(Token::ImmutableAssign) => {
+                panic!("Immutable assignment not allowed here")
+            }
+
+            _ => expr,
+        }
     }
 
     fn parse_program(&mut self) -> AST {

@@ -4,7 +4,7 @@ This is a small expression-oriented language compiled to bytecode and executed o
 
 ## Values and Types
 - **Integers**: 32-bit signed integers
-- **Arrays**: Fixed-size, zero-initialized arrays of integers
+- **Arrays**: Fixed-size, zero-initialized arrays of values (integers, structs, or arrays)
 - **Lazy integers**: Expressions stored as ASTs and evaluated on access
 - **Structs**: Heap-allocated records with named fields
 - **Functions**: Callable units that may return integers, arrays, or structs
@@ -12,11 +12,16 @@ This is a small expression-oriented language compiled to bytecode and executed o
 Arrays evaluate to their length when used as integers.
 
 ## Variables and Assignment
-- `=` mutable assignment
-- `:=` immutable assignment (cannot be reassigned)
-- `::=` reactive (lazy) assignment, evaluated when read
+- `=` mutable assignment  
+  Using `=` inside a function mutates the global environment.
 
-Immutable variables are scoped and cannot be overwritten. Reactive variables re-evaluate their expression each time they are accessed.
+- `:=` immutable assignment (cannot be reassigned)  
+  Immutable variables are scoped and cannot be overwritten.
+
+- `::=` reactive (lazy) assignment, evaluated when read  
+  Reactive assignments capture dependencies, not values.
+  Changing any dependency updates the result.
+
 
 ## Arrays
 - Created with `someArr = [size];`
@@ -42,6 +47,7 @@ struct Counter {
 - ::= reactive field (re-evaluated on access)
 
 Reactive fields may depend on other fields in the same struct.
+Reactive fields are evaluated with the struct’s fields temporarily bound as immutable variables.
 
 ### Creating Struct Instances
 ```haskell
@@ -62,10 +68,11 @@ Functions encapsulate reusable logic and may return any value type.
 ### Function Definition
 ```haskell
 func makecounter(start) {
-    c = struct Counter;
+    c := struct Counter;
     c.x = start;
     return c;
 }
+
 ```
 ### Function Calls
 ```haskell
@@ -91,6 +98,47 @@ Each loop iteration creates a fresh immutable scope.
 - Immutable variables are block-scoped
 - Immutable scopes are cleared on each loop iteration
 - Inner immutable bindings shadow outer ones
+- Function parameters are immutable bindings and behave like `:=`
+
+## Return
+### Returns are eager
+```haskell
+func f(x) {
+    y ::= x + 1;
+    return y;
+}
+
+a = 10;
+b = f(a);
+a = 20;
+
+println b;   # prints 11, not 21 #
+```
+
+### Returned structs and arrays are shared references
+```haskell
+func make() {
+    s := struct Counter;
+    return s;
+}
+
+c1 = make();
+c2 = c1;
+
+c1.x = 10;
+println c2.x;  # 10 #
+```
+
+### Immutability does not propagate through return
+```haskell
+func f() {
+    x := 5;
+    return x;
+}
+
+y = f();
+y = 10;   # allowed
+```
 
 ## Examples
 
@@ -119,7 +167,7 @@ println c.next; # 11 #
 ```
 ### Factorial via Dependency Graph
 ```haskell
-fact = [6];   # we want factorials up to 5 #
+fact = [6];   # allocate space for factorials 0..5 #
 
 fact[0] ::= 1;
 fact[1] ::= 1;
@@ -253,6 +301,76 @@ loop{
 }
 ```
 
+### 3D Matrix Relations
+```haskell
+# create a 2x2x2 array #
+arr = [2];
+arr[0] = [2];
+arr[1] = [2];
+
+arr[0][0] = [2];
+arr[0][1] = [2];
+arr[1][0] = [2];
+arr[1][1] = [2];
+
+# establish a 3D dependency #
+arr[0][0][0] ::= arr[1][1][1];
+
+# set source value #
+arr[1][1][1] = 7;
+println arr[0][0][0];   # 7 #
+
+# change source again #
+arr[1][1][1] = 42;
+println arr[0][0][0];   # 42 #
+
+```
+
+### Matrix Multiplication
+```haskell
+struct Mat2 {
+    m;
+}
+
+func mat2(a00, a01, a10, a11) {
+    A := struct Mat2; # the := here is very important! #
+    A.m = [2];
+    A.m[0] = [2];
+    A.m[1] = [2];
+
+    A.m[0][0] = a00;
+    A.m[0][1] = a01;
+    A.m[1][0] = a10;
+    A.m[1][1] = a11;
+
+    return A;
+}
+
+func mat2mul(A, B) {
+    C := struct Mat2;
+    C.m = [2];
+    C.m[0] = [2];
+    C.m[1] = [2];
+
+    C.m[0][0] ::= A.m[0][0]*B.m[0][0] + A.m[0][1]*B.m[1][0];
+    C.m[0][1] ::= A.m[0][0]*B.m[0][1] + A.m[0][1]*B.m[1][1];
+
+    C.m[1][0] ::= A.m[1][0]*B.m[0][0] + A.m[1][1]*B.m[1][0];
+    C.m[1][1] ::= A.m[1][0]*B.m[0][1] + A.m[1][1]*B.m[1][1];
+
+    return C;
+}
+
+A = mat2(1, 2, 3, 4);
+B = mat2(5, 6, 7, 8);
+C = mat2mul(A, B);
+
+println C.m[0][0];
+println C.m[0][1];
+println C.m[1][0];
+println C.m[1][1];
+```
+
 ### Bank Account with reactive fields
 ```haskell
 # Account struct with reactive fields #
@@ -265,7 +383,7 @@ struct Account {
 
 # create a new account #
 func makeaccount(start) {
-    a = struct Account;
+    a := struct Account;
     a.balance = start;
     return a;
 }
@@ -436,7 +554,7 @@ additive       ::= multiplicative (("+" | "-") multiplicative)*
 
 multiplicative ::= postfix (("*" | "/") postfix)*
 
-postfix        ::= factor ("[" expression "]")*
+postfix ::= factor (("." identifier) | ("[" expression "]"))*
 
 factor         ::= number
                  | identifier

@@ -21,17 +21,6 @@ pub fn compile(
             code.push(Instruction::ArrayGet);
         }
 
-        AST::AssignIndex(name, index_expr, value_expr) => {
-            compile(*index_expr, code, label_gen, break_stack);
-            compile(*value_expr, code, label_gen, break_stack);
-            code.push(Instruction::StoreIndex(name));
-        }
-
-        AST::ReactiveAssignIndex(name, index_expr, value_expr) => {
-            compile(*index_expr, code, label_gen, break_stack);
-            code.push(Instruction::StoreIndexReactive(name, value_expr));
-        }
-
         AST::Operation(left, operator, right) => {
             compile(*left, code, label_gen, break_stack);
             compile(*right, code, label_gen, break_stack);
@@ -69,26 +58,32 @@ pub fn compile(
             compile(*base, code, label_gen, break_stack);
             code.push(Instruction::FieldGet(field));
         }
-AST::FieldAssign { base, field, value, kind } => {
-    match kind {
-        FieldAssignKind::Normal => {
-            compile(*base, code, label_gen, break_stack);
+
+        AST::AssignTarget(target, value) => {
+            compile_lvalue(*target, code, label_gen, break_stack);
             compile(*value, code, label_gen, break_stack);
-            code.push(Instruction::FieldSet(field));
+            code.push(Instruction::StoreThrough);
         }
 
-        FieldAssignKind::Reactive => {
-            compile(*base, code, label_gen, break_stack);
-            code.push(Instruction::FieldSetReactive(field, value));
+        AST::ReactiveAssignTarget(target, value) => {
+            compile_lvalue(*target, code, label_gen, break_stack);
+            code.push(Instruction::StoreThroughReactive(value));
         }
 
-        FieldAssignKind::Immutable => {
-            panic!("immutable field assignment not allowed");
-        }
-    }
-}
-
-
+        AST::FieldAssign { base, field, value, kind } => match kind {
+            FieldAssignKind::Normal => {
+                compile(*base, code, label_gen, break_stack);
+                compile(*value, code, label_gen, break_stack);
+                code.push(Instruction::FieldSet(field));
+            }
+            FieldAssignKind::Reactive => {
+                compile(*base, code, label_gen, break_stack);
+                code.push(Instruction::FieldSetReactive(field, value));
+            }
+            FieldAssignKind::Immutable => {
+                panic!("immutable field assignment not allowed");
+            }
+        },
 
         AST::FuncDef { name, params, body } => {
             code.push(Instruction::StoreFunction(name, params, body));
@@ -133,14 +128,18 @@ AST::FieldAssign { base, field, value, kind } => {
             let else_label = label_gen.fresh("else");
             let end_label = label_gen.fresh("end");
             code.push(Instruction::JumpIfZero(else_label.clone()));
+
             for stmt in if_branch {
                 compile(stmt, code, label_gen, break_stack);
             }
+
             code.push(Instruction::Jump(end_label.clone()));
             code.push(Instruction::Label(else_label));
+
             for stmt in else_branch {
                 compile(stmt, code, label_gen, break_stack);
             }
+
             code.push(Instruction::Label(end_label));
         }
 
@@ -148,15 +147,19 @@ AST::FieldAssign { base, field, value, kind } => {
             let loop_start = label_gen.fresh("loop_start");
             let loop_end = label_gen.fresh("loop_end");
             break_stack.push(loop_end.clone());
+
             code.push(Instruction::PushImmutableContext);
             code.push(Instruction::Label(loop_start.clone()));
             code.push(Instruction::ClearImmutableContext);
+
             for stmt in block {
                 compile(stmt, code, label_gen, break_stack);
             }
+
             code.push(Instruction::Jump(loop_start));
             code.push(Instruction::Label(loop_end));
             code.push(Instruction::PopImmutableContext);
+
             break_stack.pop();
         }
 
@@ -169,6 +172,37 @@ AST::FieldAssign { base, field, value, kind } => {
         }
     }
 }
+fn compile_lvalue(
+    target: AST,
+    code: &mut Vec<Instruction>,
+    label_gen: &mut LabelGenerator,
+    break_stack: &mut Vec<String>,
+) {
+    match target {
+        AST::Index(base, index) => {
+            compile_lvalue(*base, code, label_gen, break_stack);
+
+            compile(*index, code, label_gen, break_stack);
+
+            code.push(Instruction::ArrayLValue);
+        }
+
+        AST::FieldAccess(base, field) => {
+            compile_lvalue(*base, code, label_gen, break_stack);
+            code.push(Instruction::FieldLValue(field));
+        }
+
+        AST::Var(name) => {
+            code.push(Instruction::Load(name));
+        }
+
+        other => {
+            panic!("invalid assignment target: {other:?}");
+        }
+    }
+}
+
+
 
 pub struct LabelGenerator {
     counter: usize,

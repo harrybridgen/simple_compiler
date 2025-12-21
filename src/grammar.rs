@@ -115,7 +115,12 @@ pub enum Type {
         body: Vec<AST>,
     },
 
-    StructRef(usize),
+    StructRef(usize),LValue(LValue),
+}
+#[derive(Debug, Clone)]
+pub enum LValue {
+    ArrayElem { array_id: usize, index: usize },
+    StructField { struct_id: usize, field: String },
 }
 #[derive(Debug, Clone)]
 pub struct StructInstance {
@@ -139,8 +144,8 @@ pub enum AST {
 
     ArrayNew(Box<AST>),                  
     Index(Box<AST>, Box<AST>),          
-    AssignIndex(String, Box<AST>, Box<AST>),    
-    ReactiveAssignIndex(String, Box<AST>, Box<AST>),
+    AssignTarget(Box<AST>, Box<AST>),    
+    ReactiveAssignTarget(Box<AST>, Box<AST>),
     FuncDef {
         name: String,
         params: Vec<String>,
@@ -240,5 +245,12 @@ pub enum Instruction {
     FieldSet(String),
     FieldSetReactive(String, Box<AST>),
 
-    Call(String,usize)
+    Call(String,usize),
+
+    ArrayLValue,                 
+    FieldLValue(String),        
+    StoreThrough,             
+    StoreThroughReactive(Box<AST>), 
+
+
 }

@@ -1,4 +1,4 @@
-use crate::grammar::{AST, Instruction, Operator, StructFieldInit, Type, StructInstance};
+use crate::grammar::{AST, Instruction, Operator, StructFieldInit, Type, StructInstance, LValue};
 use std::collections::{HashMap, HashSet};
 
 pub struct VM {
@@ -44,13 +44,13 @@ impl VM {
 
             match instr {
                 Instruction::Push(n) => self.stack.push(Type::Integer(n)),
-
                 Instruction::Load(name) => {
                     let v = self
                         .find_immutable(&name)
                         .cloned()
                         .or_else(|| self.environment.get(&name).cloned())
-                        .unwrap();
+                        .unwrap_or_else(|| panic!("undefined variable: {name}"));
+
                     let out = self.load_value(v);
                     self.stack.push(out);
                 }
@@ -62,7 +62,6 @@ impl VM {
                     let v = self.pop();
                     self.environment.insert(name, v);
                 }
-
                 Instruction::StoreReactive(name, ast) => {
                     if self.immutable_exists(&name) {
                         panic!()
@@ -70,7 +69,6 @@ impl VM {
                     let frozen = self.freeze_ast(ast);
                     self.environment.insert(name, Type::LazyInteger(frozen));
                 }
-
                 Instruction::StoreImmutable(name) => {
                     let v = self.pop();
                     let scope = self.immutable_stack.last_mut().unwrap();
@@ -79,91 +77,76 @@ impl VM {
                     }
                     scope.insert(name, v);
                 }
-
                 Instruction::Add => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer(b + a));
                 }
-
                 Instruction::Sub => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer(b - a));
                 }
-
                 Instruction::Mul => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer(b * a));
                 }
-
                 Instruction::Div => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer(b / a));
                 }
-
                 Instruction::Greater => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer((b > a) as i32));
                 }
-
                 Instruction::Less => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer((b < a) as i32));
                 }
-
                 Instruction::Equal => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer((b == a) as i32));
                 }
-
                 Instruction::NotEqual => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer((b != a) as i32));
                 }
-
                 Instruction::GreaterEqual => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer((b >= a) as i32));
                 }
-
                 Instruction::LessEqual => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer((b <= a) as i32));
                 }
-
                 Instruction::And => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer(((b > 0) && (a > 0)) as i32));
                 }
-
                 Instruction::Or => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer(((b > 0) || (a > 0)) as i32));
                 }
-
                 Instruction::Print => {
                     let v = self.pop();
                     let n = self.as_int(v);
                     print!("{n}");
                 }
-
                 Instruction::Println => {
                     let v = self.pop();
                     let n = self.as_int(v);
                     println!("{n}");
                 }
-
                 Instruction::ArrayNew => {
                     let n = {
                         let v = self.pop();
@@ -173,7 +156,6 @@ impl VM {
                     self.array_heap.push(vec![Type::Integer(0); n as usize]);
                     self.stack.push(Type::ArrayRef(id));
                 }
-
                 Instruction::ArrayGet => {
                     let idx = {
                         let v = self.pop();
@@ -191,7 +173,6 @@ impl VM {
                         _ => panic!(),
                     }
                 }
-
                 Instruction::StoreIndex(name) => {
                     let val = self.pop();
                     let idx = {
@@ -212,8 +193,6 @@ impl VM {
                         _ => panic!(),
                     }
                 }
-
-
                 Instruction::StoreIndexReactive(name, ast) => {
                     let idx = {
                         let v = self.pop();
@@ -235,12 +214,9 @@ impl VM {
                         _ => panic!(),
                     }
                 }
-
-
                 Instruction::StoreFunction(name, params, body) => {
                     self.environment.insert(name, Type::Function { params, body });
                 }
-
                 Instruction::Call(name, argc) => {
                     let mut args = Vec::with_capacity(argc);
                     for _ in 0..argc {
@@ -251,17 +227,14 @@ impl VM {
                     let ret = self.call_function(f, args);
                     self.stack.push(ret);
                 }
-
                 Instruction::StoreStruct(name, fields) => {
                     self.struct_defs.insert(name, fields);
                 }
-
                 Instruction::NewStruct(name) => {
                     let def = self.struct_defs.get(&name).cloned().unwrap();
                     let inst = self.instantiate_struct(def);
                     self.stack.push(inst);
                 }
-
                 Instruction::FieldGet(field) => {
                     let obj = self.pop();
                     match obj {
@@ -278,8 +251,6 @@ impl VM {
                         _ => panic!(),
                     }
                 }
-
-
                 Instruction::FieldSet(field) => {
                     let val = self.pop();
                     let obj = self.pop();
@@ -299,7 +270,6 @@ impl VM {
                         _ => panic!(),
                     }
                 }
-
                 Instruction::FieldSetReactive(field, ast) => {
                     let obj = self.pop();
                     match obj {
@@ -313,29 +283,23 @@ impl VM {
                         _ => panic!(),
                     }
                 }
-
                 Instruction::PushImmutableContext => {
                     self.immutable_stack.push(HashMap::new());
                 }
-
                 Instruction::PopImmutableContext => {
                     if self.immutable_stack.len() <= 1 {
                         panic!()
                     }
                     self.immutable_stack.pop();
                 }
-
                 Instruction::ClearImmutableContext => {
                     self.immutable_stack.last_mut().unwrap().clear();
                 }
-
                 Instruction::Label(_) => {}
-
                 Instruction::Jump(l) => {
                     self.pointer = self.labels[&l];
                     continue;
                 }
-
                 Instruction::JumpIfZero(l) => {
                     let v = self.pop();
                     let n = self.as_int(v);
@@ -344,6 +308,122 @@ impl VM {
                         continue;
                     }
                 }
+Instruction::ArrayLValue => {
+    let idx = {
+        let v = self.pop();
+        self.as_int(v) as usize
+    };
+
+    let base = self.pop();
+
+    match base {
+        Type::ArrayRef(id) => {
+            self.stack.push(Type::LValue(
+                LValue::ArrayElem { array_id: id, index: idx }
+            ));
+        }
+
+        Type::LValue(LValue::ArrayElem { array_id, index }) => {
+            let nested = match &self.array_heap[array_id][index] {
+                Type::ArrayRef(id) => *id,
+                _ => panic!("indexing non-array"),
+            };
+
+            self.stack.push(Type::LValue(
+                LValue::ArrayElem { array_id: nested, index: idx }
+            ));
+        }
+
+        Type::LValue(LValue::StructField { struct_id, field }) => {
+            let arr = self.heap[struct_id]
+                .fields
+                .get(&field)
+                .expect("missing field");
+
+            let array_id = match arr {
+                Type::ArrayRef(id) => *id,
+                _ => panic!("indexing non-array struct field"),
+            };
+
+            self.stack.push(Type::LValue(
+                LValue::ArrayElem { array_id, index: idx }
+            ));
+        }
+
+        _ => panic!("invalid ArrayLValue base"),
+    }
+}
+
+
+Instruction::FieldLValue(field) => {
+    let base = self.pop();
+
+    match base {
+        Type::StructRef(id) => {
+            self.stack.push(Type::LValue(
+                LValue::StructField { struct_id: id, field }
+            ));
+        }
+
+        Type::LValue(LValue::ArrayElem { array_id, index }) => {
+            let elem = &self.array_heap[array_id][index];
+            match elem {
+                Type::StructRef(id) => {
+                    self.stack.push(Type::LValue(
+                        LValue::StructField { struct_id: *id, field }
+                    ));
+                }
+                _ => panic!("FieldLValue on non-struct array element"),
+            }
+        }
+
+        _ => panic!("invalid FieldLValue base"),
+    }
+}
+
+
+                Instruction::StoreThrough => {
+    let value = self.pop();
+    let target = self.pop();
+
+    match target {
+        Type::LValue(LValue::ArrayElem { array_id, index }) => {
+            self.array_heap[array_id][index] = value;
+        }
+
+        Type::LValue(LValue::StructField { struct_id, field }) => {
+            if self.heap[struct_id].immutables.contains(&field) {
+                panic!("immutable field");
+            }
+            self.heap[struct_id].fields.insert(field, value);
+        }
+
+        _ => panic!("StoreThrough target is not an lvalue"),
+    }
+}
+
+                Instruction::StoreThroughReactive(ast) => {
+    let target = self.pop();
+    let frozen = self.freeze_ast(ast);
+
+    match target {
+        Type::LValue(LValue::ArrayElem { array_id, index }) => {
+            self.array_heap[array_id][index] = Type::LazyInteger(frozen);
+        }
+
+        Type::LValue(LValue::StructField { struct_id, field }) => {
+            if self.heap[struct_id].immutables.contains(&field) {
+                panic!("immutable field");
+            }
+            self.heap[struct_id]
+                .fields
+                .insert(field, Type::LazyInteger(frozen));
+        }
+
+        _ => panic!("StoreThroughReactive target is not an lvalue"),
+    }
+}
+
             }
 
             self.pointer += 1;
@@ -362,13 +442,13 @@ fn instantiate_struct(&mut self, fields: Vec<(String, Option<StructFieldInit>)>)
 
             Some(StructFieldInit::Mutable(ast)) => {
                 let v = self.eval_value(ast);
-                map.insert(name, v);
+                map.insert(name, self.clone_value(v));
             }
 
             Some(StructFieldInit::Immutable(ast)) => {
                 let v = self.eval_value(ast);
                 imm.insert(name.clone());
-                map.insert(name, v);
+                map.insert(name, self.clone_value(v));
             }
 
             Some(StructFieldInit::Reactive(ast)) => {
@@ -387,6 +467,29 @@ fn instantiate_struct(&mut self, fields: Vec<(String, Option<StructFieldInit>)>)
     Type::StructRef(id)
 }
 
+
+fn clone_value(&mut self, v: Type) -> Type {
+    match v {
+        Type::ArrayRef(id) => {
+            let new_id = self.array_heap.len();
+            self.array_heap.push(self.array_heap[id].clone());
+            Type::ArrayRef(new_id)
+        }
+
+        Type::StructRef(id) => {
+            let inst = self.heap[id].clone();
+            let new_id = self.heap.len();
+            self.heap.push(inst);
+            Type::StructRef(new_id)
+        }
+
+        Type::LazyInteger(ast) => Type::LazyInteger(ast),
+        Type::Integer(n) => Type::Integer(n),
+        Type::Function { params, body } => Type::Function { params, body },
+
+        Type::LValue(_) => panic!("cannot clone lvalue"),
+    }
+}
 
     fn call_function(&mut self, f: Type, args: Vec<Type>) -> Type {
         match f {
@@ -612,12 +715,15 @@ AST::Index(base, index) => {
             Type::ArrayRef(id) => self.array_heap[id].len() as i32,
             Type::StructRef(_) => panic!(),
             Type::Function { .. } => panic!(),
+            Type::LValue(_) => panic!("cannot coerce lvalue to int"),
+
         }
     }
 
     fn load_value(&mut self, v: Type) -> Type {
         match v {
             Type::LazyInteger(ast) => Type::Integer(self.evaluate(*ast)),
+            Type::LValue(_) => panic!("cannot load lvalue directly"),
             other => other,
         }
     }

@@ -1,57 +1,42 @@
-struct Fibonacci {
-    size := 10;
-
-    n0 = 0;
-    n1 = 1;
-
-    seq = [10];
+struct Mat2 {
+    m;
 }
 
-func initfib(f) {
-    s := f.seq;    
+func mat2(a00, a01, a10, a11) {
+    A := struct Mat2; # the := here is very important! #
+    A.m = [2];
+    A.m[0] = [2];
+    A.m[1] = [2];
 
-    s[0] ::= f.n0;
-    s[1] ::= f.n1;
+    A.m[0][0] = a00;
+    A.m[0][1] = a01;
+    A.m[1][0] = a10;
+    A.m[1][1] = a11;
 
-    x = 0;
-    dx ::= x + 1;
-
-    loop {
-        if x >= f.size - 2 {
-            break;
-        }
-
-        i := x;
-        s[i + 2] ::= s[i] + s[i + 1];
-        x = dx;
-    }
-
-    return f;
+    return A;
 }
 
-func printfib(f) {
-    s := f.seq;
+func mat2mul(A, B) {
+    C := struct Mat2;
+    C.m = [2];
+    C.m[0] = [2];
+    C.m[1] = [2];
 
-    x = 0;
-    dx ::= x + 1;
+    C.m[0][0] ::= A.m[0][0]*B.m[0][0] + A.m[0][1]*B.m[1][0];
+    C.m[0][1] ::= A.m[0][0]*B.m[0][1] + A.m[0][1]*B.m[1][1];
 
-    loop {
-        if x >= f.size {
-            break;
-        }
+    C.m[1][0] ::= A.m[1][0]*B.m[0][0] + A.m[1][1]*B.m[1][0];
+    C.m[1][1] ::= A.m[1][0]*B.m[0][1] + A.m[1][1]*B.m[1][1];
 
-        println s[x];
-        x = dx;
-    }
+    return C;
 }
 
+A = mat2(1, 2, 3, 4);
+B = mat2(5, 6, 7, 8);
+C = mat2mul(A, B);
 
-fib = struct Fibonacci;
-initfib(fib);
+println C.m[0][0];
+println C.m[0][1];
+println C.m[1][0];
+println C.m[1][1];
 
-printfib(fib);
-
-fib.n0 = 89;
-fib.n1 = 144;
-
-printfib(fib);
