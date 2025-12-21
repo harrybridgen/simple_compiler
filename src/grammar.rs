@@ -33,7 +33,7 @@ pub enum Token {
     Return,
     Struct,
     Dot,
-    Comma,Import,
+    Comma,Import,Modulo
 }
 
 use std::collections::HashMap;
@@ -137,6 +137,7 @@ pub enum Operator {
     Equal,
     Or,
     And,
+    Modulo
 }
 
 #[derive(Debug, Clone)]
@@ -163,6 +164,8 @@ pub enum Instruction {
     Label(String),
     Jump(String),
     JumpIfZero(String),
+
+Modulo,
     
     ArrayNew, 
     ArrayGet,

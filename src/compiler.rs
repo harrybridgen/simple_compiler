@@ -37,6 +37,7 @@ pub fn compile(
                 Operator::GreaterEqual => code.push(Instruction::GreaterEqual),
                 Operator::LessEqual => code.push(Instruction::LessEqual),
                 Operator::NotEqual => code.push(Instruction::NotEqual),
+                Operator::Modulo => code.push(Instruction::Modulo),
             }
         }
 

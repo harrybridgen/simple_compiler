@@ -67,6 +67,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                     panic!("Did not find matching '=' for immutable ':'")
                 }
             }
+            '%' => {tokens.push(Token::Modulo);}
             '|' => {
                 if let Some('|') = chars.peek() {
                     chars.next();

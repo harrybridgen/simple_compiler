@@ -57,7 +57,6 @@ impl VM {
                     let out = self.load_value(v);
                     self.stack.push(out);
                 }
-
                 Instruction::Store(name) => {
                     if self.immutable_exists(&name) {
                         panic!("cannot assign to immutable variable `{name}`");
@@ -65,7 +64,6 @@ impl VM {
                     let v = self.pop();
                     self.environment.insert(name, v);
                 }
-
                 Instruction::Import(path) => {
                     let module_name = path.join(".");
 
@@ -75,7 +73,6 @@ impl VM {
                         self.import_module(path);
                     }
                 }
-
                 Instruction::StoreReactive(name, ast) => {
                     if self.immutable_exists(&name) {
                         panic!("cannot reactively assign to immutable variable `{name}`");
@@ -83,7 +80,6 @@ impl VM {
                     let frozen = self.freeze_ast(ast);
                     self.environment.insert(name, Type::LazyInteger(frozen));
                 }
-
                 Instruction::StoreImmutable(name) => {
                     let v = self.pop();
                     let scope = self.immutable_stack.last_mut().unwrap();
@@ -326,122 +322,121 @@ impl VM {
                         continue;
                     }
                 }
-Instruction::ArrayLValue => {
-    let idx = {
-        let v = self.pop();
-        self.as_int(v) as usize
-    };
+                Instruction::ArrayLValue => {
+                    let idx = {
+                        let v = self.pop();
+                        self.as_int(v) as usize
+                    };
 
-    let base = self.pop();
+                    let base = self.pop();
 
-    match base {
-        Type::ArrayRef(id) => {
-            self.stack.push(Type::LValue(
-                LValue::ArrayElem { array_id: id, index: idx }
-            ));
-        }
+                    match base {
+                        Type::ArrayRef(id) => {
+                            self.stack.push(Type::LValue(
+                                LValue::ArrayElem { array_id: id, index: idx }
+                            ));
+                        }
 
-        Type::LValue(LValue::ArrayElem { array_id, index }) => {
-            let nested = match &self.array_heap[array_id][index] {
-                Type::ArrayRef(id) => *id,
-                _ => panic!("indexing non-array"),
-            };
+                        Type::LValue(LValue::ArrayElem { array_id, index }) => {
+                            let nested = match &self.array_heap[array_id][index] {
+                                Type::ArrayRef(id) => *id,
+                                _ => panic!("indexing non-array"),
+                            };
 
-            self.stack.push(Type::LValue(
-                LValue::ArrayElem { array_id: nested, index: idx }
-            ));
-        }
+                            self.stack.push(Type::LValue(
+                                LValue::ArrayElem { array_id: nested, index: idx }
+                            ));
+                        }
 
-        Type::LValue(LValue::StructField { struct_id, field }) => {
-            let arr = self.heap[struct_id]
-                .fields
-                .get(&field)
-                .expect("missing field");
+                        Type::LValue(LValue::StructField { struct_id, field }) => {
+                            let arr = self.heap[struct_id]
+                                .fields
+                                .get(&field)
+                                .expect("missing field");
 
-            let array_id = match arr {
-                Type::ArrayRef(id) => *id,
-                _ => panic!("indexing non-array struct field"),
-            };
+                            let array_id = match arr {
+                                Type::ArrayRef(id) => *id,
+                                _ => panic!("indexing non-array struct field"),
+                            };
 
-            self.stack.push(Type::LValue(
-                LValue::ArrayElem { array_id, index: idx }
-            ));
-        }
+                            self.stack.push(Type::LValue(
+                                LValue::ArrayElem { array_id, index: idx }
+                            ));
+                        }
 
-        _ => panic!("invalid ArrayLValue base"),
-    }
-}
-
-
-Instruction::FieldLValue(field) => {
-    let base = self.pop();
-
-    match base {
-        Type::StructRef(id) => {
-            self.stack.push(Type::LValue(
-                LValue::StructField { struct_id: id, field }
-            ));
-        }
-
-        Type::LValue(LValue::ArrayElem { array_id, index }) => {
-            let elem = &self.array_heap[array_id][index];
-            match elem {
-                Type::StructRef(id) => {
-                    self.stack.push(Type::LValue(
-                        LValue::StructField { struct_id: *id, field }
-                    ));
+                        _ => panic!("invalid ArrayLValue base"),
+                    }
                 }
-                _ => panic!("FieldLValue on non-struct array element"),
-            }
-        }
+                Instruction::FieldLValue(field) => {
+                    let base = self.pop();
 
-        _ => panic!("invalid FieldLValue base"),
-    }
-}
+                    match base {
+                        Type::StructRef(id) => {
+                            self.stack.push(Type::LValue(
+                                LValue::StructField { struct_id: id, field }
+                            ));
+                        }
 
+                        Type::LValue(LValue::ArrayElem { array_id, index }) => {
+                            let elem = &self.array_heap[array_id][index];
+                            match elem {
+                                Type::StructRef(id) => {
+                                    self.stack.push(Type::LValue(
+                                        LValue::StructField { struct_id: *id, field }
+                                    ));
+                                }
+                                _ => panic!("FieldLValue on non-struct array element"),
+                            }
+                        }
 
+                        _ => panic!("invalid FieldLValue base"),
+                    }
+                }
                 Instruction::StoreThrough => {
-    let value = self.pop();
-    let target = self.pop();
+                    let value = self.pop();
+                    let target = self.pop();
 
-    match target {
-        Type::LValue(LValue::ArrayElem { array_id, index }) => {
-            self.array_heap[array_id][index] = value;
-        }
+                    match target {
+                        Type::LValue(LValue::ArrayElem { array_id, index }) => {
+                            self.array_heap[array_id][index] = value;
+                        }
 
-        Type::LValue(LValue::StructField { struct_id, field }) => {
-            if self.heap[struct_id].immutables.contains(&field) {
+                        Type::LValue(LValue::StructField { struct_id, field }) => {
+                            if self.heap[struct_id].immutables.contains(&field) {
                 panic!("immutable field");
-            }
-            self.heap[struct_id].fields.insert(field, value);
-        }
+                            }
+                            self.heap[struct_id].fields.insert(field, value);
+                        }
 
-        _ => panic!("StoreThrough target is not an lvalue"),
-    }
-}
-
+                        _ => panic!("StoreThrough target is not an lvalue"),
+                    }
+                }
                 Instruction::StoreThroughReactive(ast) => {
-    let target = self.pop();
-    let frozen = self.freeze_ast(ast);
+                    let target = self.pop();
+                    let frozen = self.freeze_ast(ast);
 
-    match target {
-        Type::LValue(LValue::ArrayElem { array_id, index }) => {
-            self.array_heap[array_id][index] = Type::LazyInteger(frozen);
-        }
+                    match target {
+                        Type::LValue(LValue::ArrayElem { array_id, index }) => {
+                            self.array_heap[array_id][index] = Type::LazyInteger(frozen);
+                        }
 
-        Type::LValue(LValue::StructField { struct_id, field }) => {
-            if self.heap[struct_id].immutables.contains(&field) {
+                        Type::LValue(LValue::StructField { struct_id, field }) => {
+                            if self.heap[struct_id].immutables.contains(&field) {
                 panic!("immutable field");
-            }
-            self.heap[struct_id]
+                            }
+                            self.heap[struct_id]
                 .fields
                 .insert(field, Type::LazyInteger(frozen));
-        }
+                        }
 
-        _ => panic!("StoreThroughReactive target is not an lvalue"),
-    }
-}
-
+                        _ => panic!("StoreThroughReactive target is not an lvalue"),
+                    }
+                }
+                Instruction::Modulo =>     {                
+                    let a = self.pop_int();
+                    let b = self.pop_int();
+                    self.stack.push(Type::Integer((b % a) as i32));
+                }
             }
 
             self.pointer += 1;
@@ -613,6 +608,7 @@ fn execute_ast(&mut self, ast: AST) {
                     Operator::LessEqual => (a <= b) as i32,
                     Operator::And => ((a > 0) && (b > 0)) as i32,
                     Operator::Or => ((a > 0) || (b > 0)) as i32,
+                    Operator::Modulo => a % b  as i32,
                 }
             }
 

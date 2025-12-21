@@ -134,10 +134,11 @@ impl Parser {
     fn parse_summand(&mut self) -> AST {
         let mut ast = self.parse_postfix();
 
-        while let Some(Token::Mul | Token::Div) = self.peek() {
+        while let Some(Token::Mul | Token::Div | Token::Modulo) = self.peek() {
             let op: Operator = match self.peek() {
                 Some(Token::Mul) => Operator::Multiplication,
                 Some(Token::Div) => Operator::Division,
+                Some(Token::Modulo) => Operator::Modulo,
                 _ => unreachable!(),
             };
             self.next();
