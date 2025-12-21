@@ -3,6 +3,7 @@ import std.maths;
 x = 0;
 step = 1;
 
+
 i = 0;
 di ::= i + 1;
 
