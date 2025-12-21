@@ -267,13 +267,6 @@ println counter.x;
 
 Each loop iteration creates a fresh immutable scope.
 
-## Scoping Rules
-- Mutable variables are global
-- Immutable variables are block-scoped
-- Immutable scopes are cleared on each loop iteration
-- Inner immutable bindings shadow outer ones
-- Function parameters are immutable bindings and behave like `:=`
-
 ## Return
 ### Returns are eager
 ```haskell
