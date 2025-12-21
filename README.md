@@ -531,17 +531,13 @@ printfib(fib);
 
 ### Reactive Dot-Product Matrix
 ```haskell
-# ================================ #
 # Vec2 definition                 #
-# ================================ #
 struct Vec2 {
     x = 0;
     y = 0;
 }
 
-# ================================ #
 # Allocate vector arrays          #
-# ================================ #
 func allocvecarrays(n) {
     A := [n];
     B := [n];
@@ -560,9 +556,7 @@ func allocvecarrays(n) {
     return A;   # B is global mutable, shared #
 }
 
-# ================================ #
 # Initialize vectors              #
-# ================================ #
 func initvectors(A, B) {
     A[0].x = 1;   A[0].y = 2;
     A[1].x = 3;   A[1].y = 4;
@@ -573,9 +567,7 @@ func initvectors(A, B) {
     B[2].x = 11;  B[2].y = 12;
 }
 
-# ================================ #
 # Allocate matrix                 #
-# ================================ #
 func allocmatrix(A, B) {
     D := [A];
 
@@ -592,9 +584,7 @@ func allocmatrix(A, B) {
     return D;
 }
 
-# ================================ #
 # Bind reactive dot products      #
-# ================================ #
 func binddots(D, A, B) {
     i = 0;
     di ::= i + 1;
@@ -624,9 +614,7 @@ func binddots(D, A, B) {
     }
 }
 
-# ================================ #
 # Print matrix                    #
-# ================================ #
 func printmatrix(D) {
     i = 0;
     di ::= i + 1;
@@ -652,10 +640,7 @@ func printmatrix(D) {
     }
 }
 
-# ================================ #
 # Demo                            #
-# ================================ #
-
 A = allocvecarrays(3);
 B = [3];          
 i = 0;
