@@ -70,7 +70,6 @@ impl VM {
                     let module_name = path.join(".");
 
                     if self.imported_modules.contains(&module_name) {
-                        // already imported, do nothing
                     } else {
                         self.imported_modules.insert(module_name.clone());
                         self.import_module(path);
