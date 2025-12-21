@@ -334,6 +334,19 @@ y = 10;   # allowed
 ```
 ## Imports and Modules
 
+### Functions can be assigned to Reactive Variables
+```haskell
+import std.maths;
+
+y = -1;
+x ::= abs(y);
+println x;
+
+y = -2;
+println x;
+```
+
+
 The language supports file-based imports using dot-separated paths.
 
 ```haskell
@@ -438,17 +451,6 @@ c = struct Counter;
 println c.next; # 1 #
 c.x = 10;
 println c.next; # 11 #
-```
-### Bidning an STD Function to Reactive Variable
-```haskell
-import std.maths;
-
-y = -1;
-x ::= abs(y);
-println x;
-
-y = -2;
-println x;
 ```
 
 ### Factorial via Dependency Graph
