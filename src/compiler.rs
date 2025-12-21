@@ -89,7 +89,14 @@ pub fn compile(
             code.push(Instruction::StoreFunction(name, params, body));
         }
 
-        AST::Return(_) => {}
+        AST::Return(expr) => {
+            if let Some(e) = expr {
+                compile(*e, code, label_gen, break_stack);
+            } else {
+                code.push(Instruction::Push(0));
+            }
+            code.push(Instruction::Return);
+        }
 
         AST::Call { name, args } => {
             let argc = args.len();
@@ -122,7 +129,9 @@ pub fn compile(
                 compile(stmt, code, label_gen, break_stack);
             }
         }
-
+        AST::Import(path) => {
+            code.push(Instruction::Import(path));
+        }
         AST::IfElse(cond, if_branch, else_branch) => {
             compile(*cond, code, label_gen, break_stack);
             let else_label = label_gen.fresh("else");

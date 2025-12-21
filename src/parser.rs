@@ -343,6 +343,19 @@ impl Parser {
     }
 
     fn parse_statement(&mut self) -> AST {
+        if let Some(Token::Import) = self.peek() {
+            self.next(); 
+
+            let mut path = Vec::new();
+            path.push(self.expect_ident());
+
+            while matches!(self.peek(), Some(Token::Dot)) {
+                self.next(); 
+                path.push(self.expect_ident());
+            }
+
+            return AST::Import(path);
+        }
         if let Some(Token::Func) = self.peek() {
             return self.parse_func_def();
         }

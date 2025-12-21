@@ -99,7 +99,7 @@ pub enum Token {
     Return,
     Struct,
     Dot,
-    Comma,
+    Comma,Import,
 }
 
 use std::collections::HashMap;
@@ -141,6 +141,7 @@ pub enum AST {
     IfElse(Box<AST>, Vec<AST>, Vec<AST>),
     Loop(Vec<AST>),
     Break,
+    Import(Vec<String>),
 
     ArrayNew(Box<AST>),                  
     Index(Box<AST>, Box<AST>),          
@@ -251,6 +252,7 @@ pub enum Instruction {
     FieldLValue(String),        
     StoreThrough,             
     StoreThroughReactive(Box<AST>), 
-
+    Import(Vec<String>),
+    Return
 
 }

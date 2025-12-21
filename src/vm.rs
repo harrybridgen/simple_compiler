@@ -11,6 +11,7 @@ pub struct VM {
     struct_defs: HashMap<String, Vec<(String, Option<StructFieldInit>)>>,
     heap: Vec<StructInstance>,
     array_heap: Vec<Vec<Type>>,
+    imported_modules: HashSet<String>,
 }
 
 impl VM {
@@ -25,6 +26,8 @@ impl VM {
             labels,
             struct_defs: HashMap::new(),
             heap: Vec::new(),array_heap: Vec::new(),
+            imported_modules: HashSet::new(),
+
         }
     }
 
@@ -57,23 +60,36 @@ impl VM {
 
                 Instruction::Store(name) => {
                     if self.immutable_exists(&name) {
-                        panic!()
+                        panic!("cannot assign to immutable variable `{name}`");
                     }
                     let v = self.pop();
                     self.environment.insert(name, v);
                 }
+
+                Instruction::Import(path) => {
+                    let module_name = path.join(".");
+
+                    if self.imported_modules.contains(&module_name) {
+                        // already imported, do nothing
+                    } else {
+                        self.imported_modules.insert(module_name.clone());
+                        self.import_module(path);
+                    }
+                }
+
                 Instruction::StoreReactive(name, ast) => {
                     if self.immutable_exists(&name) {
-                        panic!()
+                        panic!("cannot reactively assign to immutable variable `{name}`");
                     }
                     let frozen = self.freeze_ast(ast);
                     self.environment.insert(name, Type::LazyInteger(frozen));
                 }
+
                 Instruction::StoreImmutable(name) => {
                     let v = self.pop();
                     let scope = self.immutable_stack.last_mut().unwrap();
                     if scope.contains_key(&name) {
-                        panic!()
+                        panic!("cannot reassign immutable variable `{name}`");
                     }
                     scope.insert(name, v);
                 }
@@ -269,6 +285,9 @@ impl VM {
                         }
                         _ => panic!(),
                     }
+                }
+                Instruction::Return => {
+                    return;
                 }
                 Instruction::FieldSetReactive(field, ast) => {
                     let obj = self.pop();
@@ -492,36 +511,56 @@ fn clone_value(&mut self, v: Type) -> Type {
 }
 
     fn call_function(&mut self, f: Type, args: Vec<Type>) -> Type {
-        match f {
-            Type::Function { params, body } => {
-                self.immutable_stack.push(HashMap::new());
-                {
-                    let scope = self.immutable_stack.last_mut().unwrap();
-                    for (p, v) in params.into_iter().zip(args) {
-                        scope.insert(p, v);
-                    }
+    match f {
+        Type::Function { params, body } => {
+    
+            self.immutable_stack.push(HashMap::new());
+            {
+                let scope = self.immutable_stack.last_mut().unwrap();
+                for (p, v) in params.into_iter().zip(args) {
+                    scope.insert(p, v);
                 }
-
-                let mut ret = Type::Integer(0);
-                for stmt in body {
-                    match stmt {
-                        AST::Return(expr) => {
-                            ret = match expr {
-                                Some(e) => self.eval_value(*e),   
-                                None => Type::Integer(0),
-                            };
-                            break;
-                        }
-                        other => self.execute_ast(other),
-                    }
-                }
-
-                self.immutable_stack.pop();
-                ret
             }
-            _ => panic!(),
+
+            let mut code = Vec::new();
+            let mut lg = crate::compiler::LabelGenerator::new();
+            let mut bs = Vec::new();
+
+            crate::compiler::compile(
+                AST::Program(body),
+                &mut code,
+                &mut lg,
+                &mut bs,
+            );
+
+      
+            let saved_code = std::mem::replace(&mut self.code, code);
+            let saved_labels =
+                std::mem::replace(&mut self.labels, Self::build_labels(&self.code));
+            let saved_ptr = self.pointer;
+            let saved_stack_len = self.stack.len();
+
+            self.pointer = 0;
+            self.run(); 
+
+     
+            let ret = if self.stack.len() > saved_stack_len {
+                self.pop()
+            } else {
+                Type::Integer(0)
+            };
+
+            self.code = saved_code;
+            self.labels = saved_labels;
+            self.pointer = saved_ptr;
+            self.immutable_stack.pop();
+
+            ret
         }
+        _ => panic!("attempted to call non-function"),
     }
+}
+
 
 fn execute_ast(&mut self, ast: AST) {
     let stack_len = self.stack.len(); 
@@ -761,4 +800,31 @@ AST::Index(base, index) => {
         let v = self.pop();
         self.as_int(v)
     }
+    fn import_module(&mut self, path: Vec<String>) {
+    let file_path = format!("{}.hs", path.join("/"));
+
+    let source = std::fs::read_to_string(&file_path)
+        .unwrap_or_else(|_| panic!("could not import module `{}`", file_path));
+
+    let tokens = crate::tokenizer::tokenize(&source);
+    let ast = crate::parser::parse(tokens);
+
+    let mut code = Vec::new();
+    let mut lg = crate::compiler::LabelGenerator::new();
+    let mut bs = Vec::new();
+
+    crate::compiler::compile(ast, &mut code, &mut lg, &mut bs);
+
+    let saved_code = std::mem::replace(&mut self.code, code);
+    let saved_labels = std::mem::replace(&mut self.labels, Self::build_labels(&self.code));
+    let saved_ptr = self.pointer;
+
+    self.pointer = 0;
+    self.run();
+
+    self.code = saved_code;
+    self.labels = saved_labels;
+    self.pointer = saved_ptr;
+}
+
 }

@@ -44,6 +44,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                     "func" =>   Token::Func,
                     "return" => Token::Return,
                     "struct" => Token::Struct,
+                    "import"  => Token::Import,
                     _         => Token::Ident(s),
                 };
 
