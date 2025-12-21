@@ -821,33 +821,46 @@ printfib(fib);
 
 ### Reactive Dot-Product Matrix
 ```haskell
-# Vec2 definition                 #
+# ---- pair of vectors ---- #
+struct VecPair {
+    A;
+    B;
+}
+
+
+# ---- vec2 ---- #
 struct Vec2 {
     x = 0;
     y = 0;
 }
 
-# Allocate vector arrays          #
+# ---- allocate vector arrays ---- #
 func allocvecarrays(n) {
-    A := [n];
-    B := [n];
+    P := struct VecPair;
+
+    P.A = [n];
+    P.B = [n];
 
     i = 0;
     di ::= i + 1;
     loop {
-        if i >= A {
+        if i >= n {
             break;
         }
-        A[i] = struct Vec2;
-        B[i] = struct Vec2;
+        P.A[i] = struct Vec2;
+        P.B[i] = struct Vec2;
         i = di;
     }
 
-    return A;   # B is global mutable, shared #
+    return P;
 }
 
-# Initialize vectors              #
-func initvectors(A, B) {
+
+# ---- init vectors ---- #
+func initvectors(P) {
+    A = P.A;
+    B = P.B;
+
     A[0].x = 1;   A[0].y = 2;
     A[1].x = 3;   A[1].y = 4;
     A[2].x = 5;   A[2].y = 6;
@@ -857,7 +870,8 @@ func initvectors(A, B) {
     B[2].x = 11;  B[2].y = 12;
 }
 
-# Allocate matrix                 #
+
+# ---- allocate matrix ---- #
 func allocmatrix(A, B) {
     D := [A];
 
@@ -874,7 +888,7 @@ func allocmatrix(A, B) {
     return D;
 }
 
-# Bind reactive dot products      #
+# ---- bind reactive dot products ---- #
 func binddots(D, A, B) {
     i = 0;
     di ::= i + 1;
@@ -904,7 +918,8 @@ func binddots(D, A, B) {
     }
 }
 
-# Print matrix                    #
+
+# ---- print matrix ---- #
 func printmatrix(D) {
     i = 0;
     di ::= i + 1;
@@ -930,20 +945,13 @@ func printmatrix(D) {
     }
 }
 
-# Demo                            #
-A = allocvecarrays(3);
-B = [3];          
-i = 0;
-di ::= i + 1;
-loop {
-    if i >= B {
-        break;
-    }
-    B[i] = struct Vec2;
-    i = di;
-}
+# ---- demo ---- #
 
-initvectors(A, B);
+P = allocvecarrays(3);
+initvectors(P);
+
+A = P.A;
+B = P.B;
 
 D = allocmatrix(A, B);
 binddots(D, A, B);
@@ -957,6 +965,7 @@ B[2].y = 1;
 
 # ---- matrix updates automatically ---- #
 printmatrix(D);
+
 ```
 
 ## Grammar
