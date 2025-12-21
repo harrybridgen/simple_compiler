@@ -98,7 +98,7 @@ struct Cell {
 }
 
 struct Container {
-    m = [2];
+    m := [2];
 }
 
 c = struct Container;
