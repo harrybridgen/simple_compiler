@@ -529,6 +529,161 @@ printfib(fib);
 
 ```
 
+### Reactive Dot-Product Matrix
+```haskell
+# ================================ #
+# Vec2 definition                 #
+# ================================ #
+struct Vec2 {
+    x = 0;
+    y = 0;
+}
+
+# ================================ #
+# Allocate vector arrays          #
+# ================================ #
+func allocvecarrays(n) {
+    A := [n];
+    B := [n];
+
+    i = 0;
+    di ::= i + 1;
+    loop {
+        if i >= A {
+            break;
+        }
+        A[i] = struct Vec2;
+        B[i] = struct Vec2;
+        i = di;
+    }
+
+    return A;   # B is global mutable, shared #
+}
+
+# ================================ #
+# Initialize vectors              #
+# ================================ #
+func initvectors(A, B) {
+    A[0].x = 1;   A[0].y = 2;
+    A[1].x = 3;   A[1].y = 4;
+    A[2].x = 5;   A[2].y = 6;
+
+    B[0].x = 7;   B[0].y = 8;
+    B[1].x = 9;   B[1].y = 10;
+    B[2].x = 11;  B[2].y = 12;
+}
+
+# ================================ #
+# Allocate matrix                 #
+# ================================ #
+func allocmatrix(A, B) {
+    D := [A];
+
+    i = 0;
+    di ::= i + 1;
+    loop {
+        if i >= D {
+            break;
+        }
+        D[i] = [B];
+        i = di;
+    }
+
+    return D;
+}
+
+# ================================ #
+# Bind reactive dot products      #
+# ================================ #
+func binddots(D, A, B) {
+    i = 0;
+    di ::= i + 1;
+
+    loop {
+        if i >= A {
+            break;
+        }
+
+        j = 0;
+        dj ::= j + 1;
+
+        loop {
+            if j >= B {
+                break;
+            }
+
+            ii := i;
+            jj := j;
+
+            D[ii][jj] ::= A[ii].x*B[jj].x + A[ii].y*B[jj].y;
+
+            j = dj;
+        }
+
+        i = di;
+    }
+}
+
+# ================================ #
+# Print matrix                    #
+# ================================ #
+func printmatrix(D) {
+    i = 0;
+    di ::= i + 1;
+
+    loop {
+        if i >= D {
+            break;
+        }
+
+        j = 0;
+        dj ::= j + 1;
+
+        loop {
+            if j >= D[i] {
+                break;
+            }
+
+            println D[i][j];
+            j = dj;
+        }
+
+        i = di;
+    }
+}
+
+# ================================ #
+# Demo                            #
+# ================================ #
+
+A = allocvecarrays(3);
+B = [3];          
+i = 0;
+di ::= i + 1;
+loop {
+    if i >= B {
+        break;
+    }
+    B[i] = struct Vec2;
+    i = di;
+}
+
+initvectors(A, B);
+
+D = allocmatrix(A, B);
+binddots(D, A, B);
+
+# ---- initial matrix ---- #
+printmatrix(D);
+
+# ---- mutate vectors ---- #
+A[1].x = 100;
+B[2].y = 1;
+
+# ---- matrix updates automatically ---- #
+printmatrix(D);
+```
+
 ## Grammar
 ```haskell
 program        ::= statement (";" statement)* ";"?
