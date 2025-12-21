@@ -73,6 +73,7 @@ arr[1] ::= arr[0] + 1;
 x := arr[1]; # 11 #
 ```
 Array elements support both mutable (`=`) and reactive (`::=`) assignment.
+Array values can be retrived by both `::=` and `=` variables.
 Bounds are checked at runtime.
 
 ### Nested Arrays
