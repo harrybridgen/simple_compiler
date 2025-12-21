@@ -104,26 +104,6 @@ loop {
 Here, `i` freezes the value of `x` for each iteration.  
 Without `:=`, reactive assignments would refer to a moving variable and the graph would be incorrect.
 
-### `:=` and Arrays in Structs
-
-When a struct field holds an array or struct, `:=` creates a **per-instance object identity**.
-
-```haskell
-struct Container {
-    data := [5];
-}
-
-c1 = struct Container;
-c2 = struct Container;
-
-c1.data[0] = 10;
-println c2.data[0];   # 0 #
-```
-
-Each instance owns its own array.
-
-Using `=` instead would cause all instances to share the same global array.
-
 ## Structs
 
 Structs define heap-allocated records with named fields.
