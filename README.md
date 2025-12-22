@@ -11,7 +11,21 @@ This is a small expression-oriented language compiled to bytecode and executed o
 - **Functions**: Callable units that may return integers, arrays, or structs
 
 Arrays evaluate to their length when used as integers.
+## Expressions
+- Arithmetic: `+ - * /`
+- Modulo `%`
+- Comparison: `> < >= <= == !=`
+- Logic: `&& ||`
+- No boolean type: `0` is false, non-zero is true
+- Ternary `x ? y : z;`
 
+## Control Flow
+- `if { } else { }` conditional execution
+- `return x;` returns a value from a function
+- `loop { }` infinite loop
+- `break` exits the nearest loop
+
+Each loop iteration creates a fresh immutable scope.
 ## Variables and Assignment
 
 The language has **three assignment forms**, each with a distinct meaning.
@@ -385,24 +399,6 @@ counter = buildcounter(10);
 println counter.next;  # reactive field` 
 ```
 Reactivity is preserved because it is attached to heap locations.
-
-
-## Expressions
-- Arithmetic: `+ - * /`
-- Modulo `%`
-- Comparison: `> < >= <= == !=`
-- Logic: `&& ||`
-- No boolean type: `0` is false, non-zero is true
-- Ternary `x ? y : z;`
-
-## Control Flow
-- `if { } else { }` conditional execution
-- `return x;` returns a value from a function
-- `loop { }` infinite loop
-- `break` exits the nearest loop
-
-Each loop iteration creates a fresh immutable scope.
-
 
 ## Imports and Modules
 
