@@ -43,6 +43,10 @@ At the top level, mutable variables are stored in the global environment.
 ```haskell
 x = 10;
 arr = [5];
+
+println x; # 10 #
+println arr; # 5 (length) #
+println arr[3] # 0 (3rd index init 0) #
 ```
 
 Inside structs, = creates a per-instance mutable field.
@@ -92,7 +96,10 @@ println x; # 1, not 10 #
 `::=` defines a **relationship** between locations.  
 It stores an expression and its dependencies, not a value.
 ```haskell
+x = 1;
 y ::= x + 1;
+
+println y; # 2 #
 ```
 
 The expression is evaluated **when read**.  
@@ -120,9 +127,25 @@ Here, `dx` defines how `x` advances, while `=` controls when the update occurs.
 Reactive assignments work uniformly for **variables, struct fields, array elements and ternary operator**:
 
 ```haskell
+struct Counter {
+    x = 1;
+    step = 1;
+}
+
+c = struct Counter;
+
 c.next ::= c.x + c.step;
-arr[1] ::= arr[0] + 1;
+println c.next; # 2 # 
+
+c.x = c.next;
+println c.next; # 3 # 
+
+arr = [2]
+arr[1] ::= arr[0] + 2;
 x ::= arr[1] > 1 ? 10 : 20;
+
+println arr[0]; # 0 #
+print x; # 10 #
 ```
 - Relationships attach to the underlying field or element, so all aliases observe the same behavior.
 - Reactive assignments may depend on literals, other locations, and immutable bindings (`:=`).  
@@ -130,21 +153,92 @@ x ::= arr[1] > 1 ? 10 : 20;
 
 ### `:=` Immutable Binding (capture / identity)
 
-`:=` creates a **new immutable binding**.  
-It does **not** create or reference a global location and does **not** participate in the reactive graph.
+**`:=` is value capture, not assignment**
 
-This is required when capturing values in loops:
+`:=` does not:
+- create a location
+- point to a variable
+- participate in the reactive graph
+- update when things change
+- 
+Instead:
+- `:=` takes a snapshot of a value and gives it a name.
 
+That name:
+- is immutable
+- is not reactive
+- disappears when the scope ends
+- cannot be reassigned
+- cannot be observed reactively
+
+**If the `:=` is binding an array or struct, the contents **are** mutable**
+
+### Why `:=` exists at all
+Reactive bindings (::=) do not store values! They store relationships.
+This means that:
 ```haskell
+arr[i] ::= arr[i - 1] + 1;
+```
+does not mean: “use the current value of i”
+It means: “use whatever `i` refers to when this expression is evaluated”
+
+So if `i` keeps changing, the dependency graph becomes self-referential, unstable, or incorrect.
+
+### The problem (without `:=`)
+
+Take this code:
+```haskell
+arr = [3];
+i = 0;
+
 loop {
-    i := x;  # capture current value #
-    arr[i] ::= arr[i-1] + 1;
-    x = x + 1;
+    arr[i] ::= i * 10;
+    i = i + 1;
+    if i >= 3 { break; }
+}
+
+print arr[0];
+print arr[1];
+print arr[2];
+```
+Becomes:
+```
+arr[0] = 30
+arr[1] = 30
+arr[2] = 30
+```
+and **not**:
+```
+arr[0] = 0
+arr[1] = 10
+arr[2] = 20
+```
+Why?
+Because `::=` doesn’t store a value it stores “whatever `i` is later”.
+
+So, you need to use the `:=` imutable bind to "capture" the value of `i`
+```haskell
+arr = [3];
+i = 0;
+
+loop {
+    j := i;          # capture the current value #
+    arr[j] ::= j * 10;
+    i = i + 1;
+    if i >= 3 { break; }
 }
 ```
 
-Here, `i` freezes the value of `x` for each iteration.  
-Without `:=`, reactive assignments would refer to a moving variable and the graph would be incorrect.
+Here, `j` freezes the value of `i` for each iteration.  
+
+Each reactive assignment becomes:
+- independent
+- anchored to a fixed index
+- safe to evaluate later
+
+Without :=, all reactive assignments would refer to the same moving variable, and the graph would be invalid.
+
+Another example:
 
 
 ## Characters and Strings
