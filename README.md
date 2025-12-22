@@ -1052,6 +1052,119 @@ printmatrix(D);
 
 ```
 
+### Moving String
+```haskell
+# --- constants --- #
+width := 40;
+height := 10;
+text := "HELLO REACTIVE";
+text_len := text;
+
+# --- framebuffer --- #
+screen := [height];
+
+# --- init framebuffer --- #
+func init_screen() {
+    y = 0;
+    dy ::= y + 1;
+    loop {
+        if y >= height { break; }
+        screen[y] = [width];
+
+        x = 0;
+        dx ::= x + 1;
+        loop {
+            if x >= width { break; }
+            screen[y][x] = ' ';
+            x = dx;
+        }
+
+        y = dy;
+    }
+}
+
+# --- clear framebuffer --- #
+func clear_screen() {
+    y = 0;
+    dy ::= y + 1;
+    loop {
+        if y >= height { break; }
+
+        x = 0;
+        dx ::= x + 1;
+        loop {
+            if x >= width { break; }
+            screen[y][x] = ' ';
+            x = dx;
+        }
+
+        y = dy;
+    }
+}
+
+# --- draw string --- #
+func draw_text(x, y, s) {
+    i = 0;
+    di ::= i + 1;
+    loop {
+        if i >= s { break; }
+        screen[y][x + i] = s[i];
+        i = di;
+    }
+}
+
+# --- render framebuffer --- #
+func render() {
+    y = 0;
+    dy ::= y + 1;
+    loop {
+        if y >= height { break; }
+
+        x = 0;
+        dx ::= x + 1;
+        loop {
+            if x >= width { break; }
+            print screen[y][x];
+            x = dx;
+        }
+
+        println ' ';
+        y = dy;
+    }
+}
+
+# --- delay --- #
+func delay(n) {
+    d = 0;
+    dd ::= d + 1;
+    loop {
+        if d >= n { break; }
+        d = dd;
+    }
+}
+
+# --- setup --- #
+init_screen();
+
+tx = 0;
+dir = 1;
+dtx ::= tx + dir;
+
+# --- main loop --- #
+loop {
+    clear_screen();
+
+    draw_text(tx, 4, text);
+    render();
+    delay(20000);
+
+    tx = dtx;
+
+    if tx <= 0 { dir = 1; }
+    if tx + text_len >= width { dir = -1; }
+}
+```
+
 ## Grammar
 ```haskell
 program
