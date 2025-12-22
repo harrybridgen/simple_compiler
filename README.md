@@ -139,13 +139,14 @@ struct Counter {
 }
 
 c = struct Counter;
-
 c.next ::= c.x + c.step;
-println c.next; # 2 # 
 
+println c.next; # 2 # 
 c.x = c.next;
 println c.next; # 3 # 
+```
 
+```haskell
 arr = [2]
 arr[1] ::= arr[0] + 2;
 x ::= arr[1] > 1 ? 10 : 20;
