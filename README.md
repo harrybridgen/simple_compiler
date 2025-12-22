@@ -211,6 +211,7 @@ println c; # 5 #
 Reactive assignments to array elements capture relationships between values.
 ```haskell
 base = 0;
+arr = [2]
 arr[0] ::= base;
 arr[1] ::= arr[0] + 1;
 base = arr[1];
