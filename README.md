@@ -8,7 +8,7 @@ This is a small expression-oriented language compiled to bytecode and executed o
 - **Characters**: Unicode scalar values ('A', 'b', '\n')
 - **Strings**: Mutable arrays of characters ("HELLO")
 - **Arrays**: Fixed-size, zero-initialized arrays of values (integers, characters, structs, or arrays).  
-- **Lazy integers**: Expressions stored as ASTs and evaluated on access
+- **Lazy values**: Expressions stored as ASTs and evaluated on access
 - **Structs**: Heap-allocated records with named fields
 - **Functions**: Callable units that may return integers, arrays, or structs
 
@@ -28,7 +28,7 @@ Arrays (including strings) evaluate to their length when used as integers.
 - `loop { }` infinite loop
 - `break` exits the nearest loop
 
-Each loop iteration creates a fresh immutable scope.
+Each loop iteration creates a fresh immutable `:=` scope, while mutable and reactive locations persist.
 
 ## Variables and Assignment
 
@@ -113,7 +113,7 @@ If any dependency changes, the result updates automatically.
 
 `::=` Reactive assignments:
 - capture **dependencies**, not snapshots
-- are lazy and pure
+- are lazy evaluated
 - attach to the **location**, not the name
 
 They are commonly used to build **progression variables** in loops:
@@ -130,7 +130,7 @@ loop {
 
 Here, `dx` defines how `x` advances, while `=` controls when the update occurs.
 
-Reactive assignments work uniformly for **variables, struct fields, array elements and ternary operator**:
+Reactive assignments work uniformly for **variables, struct fields, array elemements**
 
 ```haskell
 struct Counter {
@@ -145,7 +145,7 @@ println c.next; # 2 #
 c.x = c.next;
 println c.next; # 3 # 
 ```
-
+Reactive assignments may use ternary expressions on the right-hand side.
 ```haskell
 arr = [2]
 arr[1] ::= arr[0] + 2;
@@ -592,7 +592,8 @@ Functions returning integers may be used directly in reactive expressions.
 
 ### Functions Returning Heap Objects Are Not Reactive
 
-Reactive bindings **cannot bind entire structs or arrays**.
+You cannot bind a reactive relationship to object identity.
+But you can bind to their fields.
 
 `r ::= twosum(nums, 9);   # invalid: returns struct #` 
 
