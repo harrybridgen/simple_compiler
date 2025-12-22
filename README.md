@@ -1161,13 +1161,11 @@ statement
      | immutable_assignment
      | expression
 
-
 import_statement
     ::= "import" import_path
 
 import_path
     ::= identifier ("." identifier)*
-
 
 assignment
     ::= lvalue "=" expression
@@ -1178,12 +1176,10 @@ reactive_assignment
 immutable_assignment
     ::= identifier ":=" expression
 
-
 lvalue
     ::= identifier
      | lvalue "[" expression "]"
      | lvalue "." identifier
-
 
 struct_definition
     ::= "struct" identifier "{" field* "}"
@@ -1192,13 +1188,11 @@ field
     ::= identifier
      | identifier ("=" | ":=" | "::=") expression ";"?
 
-
 function_definition
-    ::= "func" identifier "(" params ")" block
+    ::= "func" identifier "(" params? ")" block
 
 params
     ::= identifier ("," identifier)*
-
 
 if_statement
     ::= "if" expression block ("else" block)?
@@ -1213,10 +1207,8 @@ return_statement
     ::= "return"
      | "return" expression
 
-
 block
     ::= "{" statement (";" statement)* ";"? "}"
-
 
 print_statement
     ::= "print" expression
@@ -1224,9 +1216,11 @@ print_statement
 println_statement
     ::= "println" expression
 
-
 expression
-    ::= or_expr
+    ::= ternary
+
+ternary
+    ::= or_expr ("?" expression ":" expression)?
 
 or_expr
     ::= and_expr ("||" and_expr)*
@@ -1241,26 +1235,50 @@ additive
     ::= multiplicative (("+" | "-") multiplicative)*
 
 multiplicative
-    ::= postfix (("*" | "/") postfix)*
+    ::= postfix (("*" | "/" | "%") postfix)*
 
 postfix
-    ::= factor (("." identifier) | ("[" expression "]"))*
+    ::= factor postfix_op*
+
+postfix_op
+    ::= "." identifier
+     | "[" expression "]"
+     | "(" arguments? ")"
+
+arguments
+    ::= expression ("," expression)*
 
 factor
     ::= number
+     | string
+     | char
      | identifier
+     | "struct" identifier
      | "-" factor
      | "(" expression ")"
      | "[" expression "]"
 
-
 identifier
-    ::= [a-zA-Z][a-zA-Z0-9]*
+    ::= [a-zA-Z][a-zA-Z0-9_]*
 
 number
     ::= [0-9]+
+
+char
+    ::= "'" character "'"
+
+string
+    ::= '"' character* '"'
+
+character
+    ::= escaped_char
+     | any_char_except_quote_or_backslash
+
+escaped_char
+    ::= "\\" ("n" | "t" | "r" | "0" | "'" | '"' | "\\")
 
 comment
     ::= "#" .* "#"
 
 ```
+
