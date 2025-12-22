@@ -94,9 +94,8 @@ foo();   # return value ignored #
 println x;  # 1, not 10 #
 
 ```
-Here:
-- x inside the function is a captured value, not a mutable location
-- changes to it do not affect the global x
+Here `x` inside the function is a captured value, not a mutable location
+
 
 ### `::=` Reactive Assignment (relationships)
 
