@@ -228,11 +228,15 @@ arr = [3];
 i = 0;
 
 loop {
-    j := i;          # capture the current value #
+    j := i; # capture the current value #
     arr[j] ::= j * 10;
     i = i + 1;
     if i >= 3 { break; }
 }
+
+print arr[0];
+print arr[1];
+print arr[2];
 ```
 
 Here, `j` freezes the value of `i` for each iteration.  
