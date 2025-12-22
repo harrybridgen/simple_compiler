@@ -242,9 +242,7 @@ Each reactive assignment becomes:
 - anchored to a fixed index
 - safe to evaluate later
 
-Without :=, all reactive assignments would refer to the same moving variable, and the graph would be invalid.
-
-Another example:
+Without `:=`, all reactive assignments would refer to the same moving variable, and the graph would be invalid.
 
 
 ## Characters and Strings
