@@ -7,7 +7,7 @@ This is a small expression-oriented language compiled to bytecode and executed o
 - **Integers**: 32-bit signed integers
 - **Characters**: Unicode scalar values ('A', 'b', '\n')
 - **Strings**: Mutable arrays of characters ("HELLO")
-- **Arrays**: Fixed-size, zero-initialized arrays of values (integers, structs, or arrays)
+- **Arrays**: Fixed-size, zero-initialized arrays of values (integers, characters, structs, or arrays).  
 - **Lazy integers**: Expressions stored as ASTs and evaluated on access
 - **Structs**: Heap-allocated records with named fields
 - **Functions**: Callable units that may return integers, arrays, or structs
@@ -1197,16 +1197,7 @@ func render() {
     loop {
         if y >= height { break; }
 
-        x = 0;
-        dx ::= x + 1;
-
-        loop {
-            if x >= width { break; }
-            print screen[y][x];
-            x = dx;
-        }
-
-        println ' ';
+        println screen[y];
         y = dy;
     }
 }
