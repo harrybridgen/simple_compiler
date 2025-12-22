@@ -1052,6 +1052,98 @@ printmatrix(D);
 
 ```
 
+### Moving String with non-Reactive Framebuffer
+```haskell
+width := 40;
+height := 10;
+
+screen := [height];
+text_height = screen / 2;
+
+
+y = 0;
+dy ::= y + 1;
+loop {
+    if y >= height { break; }
+    screen[y] = [width];
+
+    x = 0;
+    dx ::= x + 1;
+    loop {
+        if x >= width { break; }
+        screen[y][x] = ' ';
+        x = dx;
+    }
+    y = dy;
+}
+
+text := "HELLO REACTIVE";
+text_len := text;
+
+tx = 0;
+dir = 1;
+
+loop {
+
+    y = 0;
+    dy ::= y + 1;
+    loop {
+        if y >= height { break; }
+
+        x = 0;
+        dx ::= x + 1;
+        loop {
+            if x >= width { break; }
+            screen[y][x] = ' ';
+            x = dx;
+        }
+
+        y = dy;
+    }
+
+    # draw text #
+    i = 0;
+    di ::= i + 1;
+    loop {
+        if i >= text_len { break; }
+        screen[text_height][tx + i] = text[i];
+        i = di;
+    }
+
+    # render #
+    y = 0;
+    dy ::= y + 1;
+    loop {
+        if y >= height { break; }
+
+        x = 0;
+        dx ::= x + 1;
+        loop {
+            if x >= width { break; }
+            print screen[y][x];
+            x = dx;
+        }
+
+        println ' ';
+        y = dy;
+    }
+
+    # update position #
+    tx = tx + dir;
+
+    if tx <= 0 { dir = 1; }
+    if tx + text_len >= width { dir = -1; }
+
+    # crude delay #
+    d = 0;
+    dd ::= d + 1;
+    loop {
+        if d > 20000 { break; }
+        d = dd;
+    }
+}
+```
+
 ### Moving String with Reactive Framebuffer
 ```haskell
 # --- constants --- #
@@ -1061,7 +1153,7 @@ height := 10;
 text := "HELLO REACTIVE";
 text_len := text;
 
-text_y := height - 1;
+text_y := height /2 ;
 
 screen := [height];
 
@@ -1139,7 +1231,6 @@ loop {
     if tx + text_len >= width { dir = -1; }
 
 }
-
 ```
 
 ## Grammar
