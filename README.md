@@ -1076,14 +1076,11 @@ func buildscreen() {
             screen[yy][xx] ::= (yy == ty && xx >= tx && xx < tx + text_len)
                              ? text[xx - tx]
                              : (' ');
-
             x = dx;
         }
-
         y = dy;
     }
 }
-
 
 # render (pure observation) #
 func render() {
@@ -1117,13 +1114,14 @@ func delay(n) {
     }
 }
 
-# ========= START ========= # 
+# ================== MAIN ================== # 
 
-# constants #
+# screen constants #
 width := 31;
 height := 5;
 screen := [height];
 
+# text constants #
 text := "HELLO REACTIVE";
 text_len := text;
 
@@ -1136,10 +1134,6 @@ dtx ::= tx + dir;
 ty = 0;
 diry = 1;
 dty ::= ty + diry;
-
-# loop vars #
-y = 0;
-dy ::= y + 1;
 
 # build the reactive framebuffer #
 buildscreen();
