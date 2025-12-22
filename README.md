@@ -179,7 +179,7 @@ That name:
 
 **If the `:=` is binding an array or struct, the contents **are** mutable**
 
-### Why `:=` exists at all
+#### Why `:=` exists at all
 Reactive bindings (::=) do not store values! They store relationships.
 This means that:
 ```haskell
@@ -190,7 +190,7 @@ It means: “use whatever `i` refers to when this expression is evaluated”
 
 So if `i` keeps changing, the dependency graph becomes self-referential, unstable, or incorrect.
 
-### The problem (without `:=`)
+#### The problem (without `:=`)
 
 Take this code:
 ```haskell
