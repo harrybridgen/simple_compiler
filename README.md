@@ -1,3 +1,4 @@
+
 # Reactive Language
 
 This is a small expression-oriented language compiled to bytecode and executed on a stack-based virtual machine.
@@ -73,7 +74,7 @@ loop {
 
 Here, `dx` defines how `x` advances, while `=` controls when the update occurs.
 
-Reactive assignments work uniformly for **variables, struct fields, array elements and tenary operator**:
+Reactive assignments work uniformly for **variables, struct fields, array elements and ternary operator**:
 
 ```haskell
 c.next ::= c.x + c.step;
@@ -238,43 +239,49 @@ println c.m[0][0].yy;  # 14 #
 
 ## Functions
 
-Functions encapsulate reusable logic and may return any value type.
 
-### Function Definition
+### Function Values and Calls
+
+Functions encapsulate reusable logic and may return **integers, arrays, or structs**.
+
+Functions are **first-class values** stored in the global environment and invoked by name.
 ```haskell
-func makecounter(start) {
-    c := struct Counter;
-    c.x = start;
-    return c;
+func add(a, b) {
+    return a + b;
 }
 
+println add(2, 3);  # 5 #` 
 ```
-### Function Calls
+----------
+
+### Function Execution Model
+
+Calling a function:
+
+1.  Creates a **new immutable scope** for parameters
+    
+2.  Binds arguments to parameter names immutably
+    
+3.  Executes the function body
+    
+4.  Returns a value (or `0` if no return is executed)
+    
 ```haskell
-counter = makecounter(10);
-println counter.x;
+`func f(x) {
+    x = 10;   # error: x is immutable
+}` 
 ```
+Parameters behave like `:=` bindings.
 
-## Expressions
-- Arithmetic: `+ - * /`
-- Modulo `%`
-- Comparison: `> < >= <= == !=`
-- Logic: `&& ||`
-- No boolean type: `0` is false, non-zero is true
-- Tenary `x ? y : z;`
+----------
 
-## Control Flow
-- `if { } else { }` conditional execution
-- `return x;` returns a value from a function
-- `loop { }` infinite loop
-- `break` exits the nearest loop
+### Return Semantics
 
-Each loop iteration creates a fresh immutable scope.
+ Returns are **eager**
 
-## Return
-### Returns are eager
-```haskell
-func f(x) {
+Returned expressions are evaluated **immediately**, not reactively.
+``` haskell
+`func f(x) {
     y ::= x + 1;
     return y;
 }
@@ -283,10 +290,15 @@ a = 10;
 b = f(a);
 a = 20;
 
-println b;   # prints 11, not 21 #
+println b;  # 11 #` 
 ```
+Reactive relationships do **not escape** the function unless explicitly attached to a location outside.
 
-### Returned structs and arrays are shared references
+----------
+
+### Returned Heap Values Are Shared
+
+Arrays and structs are heap-allocated and returned **by reference**.
 ```haskell
 func make() {
     s := struct Counter;
@@ -299,8 +311,13 @@ c2 = c1;
 c1.x = 10;
 println c2.x;  # 10 #
 ```
+This sharing is intentional and allows mutation and reactivity across aliases.
 
-### Immutability does not propagate through return
+----------
+
+### Immutability Does Not Propagate Through Return
+
+Returning an immutable binding yields a **mutable value** to the caller.
 ```haskell
 func f() {
     x := 5;
@@ -311,41 +328,82 @@ y = f();
 y = 10;   # allowed
 ```
 
-### Functions can be assigned to Reactive Variables
-Reactive bindings (::=) may only be used with expressions that evaluate to
-an integer value.
+Immutability applies only to the _binding_, not the value.
 
+----------
+
+### Reactive Use of Functions
+
+Reactive Bindings Require Scalar Results
+
+Reactive assignments (`::=`) operate on **integer-valued expressions only**.
 ```haskell
-import std.maths;
+y ::= abs(x);  # allowed
 
-y = -1;
-x ::= abs(y); # Returns an int #
-println x; # 1 #
-
-y = -2;
-println x; # 2 #
+player = struct Player;
+y ::= player;  # NOT allowed
 ```
 
-In this language, reactivity is defined over scalar (int) values, not heap
-objects. As a result:
-- Functions returning integers may be used directly with ::=  
-- Functions returning structs cannot be bound reactively as a whole  
+Functions returning integers may be used directly in reactive expressions.
 
-For example, this is NOT allowed:
-```haskell
-r ::= twosum(nums, 9); # twosum returns a Pair struct
-```
-However, struct *fields* may be bound reactively, since field access
-evaluates to an integer:
+----------
+
+### Functions Returning Heap Objects Are Not Reactive
+
+Reactive bindings **cannot bind entire structs or arrays**.
+
+`r ::= twosum(nums, 9);   # invalid: returns struct` 
+
+This is because reactivity is defined over **values**, not object identity.
+
+----------
+
+### Reactive Binding of Struct Fields (Recommended Pattern)
+
+To express reactive algorithms that produce structured results, bind **individual fields**:
 ```haskell
 result := struct Pair;
 
 result.i ::= twosum(nums, 9).i;
-result.j ::= twosum(nums, 9).j;
+result.j ::= twosum(nums, 9).j;` 
 ```
-This pattern is the intended way to express reactive algorithms that
-produce structured results. Reactivity applies to values, not object
-identity.
+This is the intended and supported pattern.
+
+----------
+
+### Functions and Reactive Construction
+
+Functions may **establish reactive relationships** on heap objects and return them.
+```haskell
+func buildcounter(start) {
+    c := struct Counter;
+    c.x = start;
+    return c;
+}
+
+counter = buildcounter(10);
+println counter.next;  # reactive field` 
+```
+Reactivity is preserved because it is attached to heap locations.
+
+
+## Expressions
+- Arithmetic: `+ - * /`
+- Modulo `%`
+- Comparison: `> < >= <= == !=`
+- Logic: `&& ||`
+- No boolean type: `0` is false, non-zero is true
+- Ternary `x ? y : z;`
+
+## Control Flow
+- `if { } else { }` conditional execution
+- `return x;` returns a value from a function
+- `loop { }` infinite loop
+- `break` exits the nearest loop
+
+Each loop iteration creates a fresh immutable scope.
+
+
 ## Imports and Modules
 
 The language supports file-based imports using dot-separated paths.
