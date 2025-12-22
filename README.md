@@ -1084,6 +1084,9 @@ func framebuffer() {
 
 # render (pure observation) #
 func render() {
+    print clear_terminal;
+    print reset_cursor;
+
     y = 0;
     dy ::= y + 1;
 
@@ -1125,15 +1128,20 @@ screen := [height];
 text := "HELLO REACTIVE";
 text_len := text;
 
+# ESC CLI commands # 
+clear_terminal := "\033[2J"
+reset_cursor := "\033[H"
+
 # horizontal motion #
 tx = 0;
-dir = 1;
-dtx ::= tx + dir;
+vx = 1;
+dtx ::= tx + vx;
 
 # vertical motion #
 ty = 0;
-diry = 1;
-dty ::= ty + diry;
+vy = 1;
+dty ::= ty + vy;
+
 
 # build the reactive framebuffer #
 framebuffer();
@@ -1146,12 +1154,26 @@ loop {
     tx = dtx;
     ty = dty;
     
-    if tx <= 0 { dir = 1; }
-    if tx + text_len >= width { dir = -1; }
+    if tx < 0 {
+        tx = -tx;
+        vx = -vx;
+    }
 
-    if ty <= 0 { diry = 1; }
-    if ty >= height - 1 { diry = -1; }
+    if tx + text_len > width {
+        tx = (width - text_len) - ((tx + text_len) - width);
+        vx = -vx;
+    }
 
+
+    if ty < 0 {
+        ty = -ty;
+        vy = -vy;
+    }
+
+    if ty > height - 1 {
+        ty = (height - 1) - (ty - (height - 1));
+        vy = -vy;
+    }
 }
 ```
 
