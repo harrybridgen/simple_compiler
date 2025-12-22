@@ -65,7 +65,6 @@ impl VM {
                     let v = self.pop();
                     self.environment.insert(name, v);
                 }
-
                 Instruction::Import(path) => {
                     let module_name = path.join(".");
 
@@ -152,23 +151,36 @@ impl VM {
                 }
                 Instruction::Print => {
                     let v = self.pop();
-                    let n = self.as_int(v);
-
-                    if let Some(ch) = char::from_u32(n as u32) {
-                        print!("{ch}");
-                    } else {
-                        print!("{n}");
+                    match v {
+                        Type::Char(c) => print!("{}", char::from_u32(c).unwrap()),
+                        Type::Integer(n) => print!("{n}"),
+                        Type::ArrayRef(id) => {
+                            for elem in &self.array_heap[id] {
+                                match elem {
+                                    Type::Char(c) => print!("{}", char::from_u32(*c).unwrap()),
+                                    _ => panic!("non-char in string"),
+                                }
+                            }
+                        }
+                        _ => panic!("cannot print value"),
                     }
                 }
                 Instruction::Println => {
                     let v = self.pop();
-                    let n = self.as_int(v);
-
-                    if let Some(ch) = char::from_u32(n as u32) {
-                        println!("{ch}");
-                    } else {
-                        println!("{n}");
+                    match v {
+                        Type::Char(c) => print!("{}", char::from_u32(c).unwrap()),
+                        Type::Integer(n) => print!("{n}"),
+                        Type::ArrayRef(id) => {
+                            for elem in &self.array_heap[id] {
+                                match elem {
+                                    Type::Char(c) => print!("{}", char::from_u32(*c).unwrap()),
+                                    _ => panic!("non-char in string"),
+                                }
+                            }
+                        }
+                        _ => panic!("cannot print value"),
                     }
+                    println!();
                 }
                 Instruction::ArrayNew => {
                     let n = {
@@ -209,7 +221,6 @@ impl VM {
                         }
                     }
                 }
-
                 Instruction::StoreIndex(name) => {
                     let val = self.pop();
                     let idx = {
@@ -502,6 +513,7 @@ impl VM {
                     let b = self.pop_int();
                     self.stack.push(Type::Integer((b % a) as i32));
                 }
+                Instruction::PushChar(c) => self.stack.push(Type::Char(c)),
             }
 
             self.pointer += 1;
@@ -552,19 +564,17 @@ impl VM {
                 self.array_heap.push(self.array_heap[id].clone());
                 Type::ArrayRef(new_id)
             }
-
             Type::StructRef(id) => {
                 let inst = self.heap[id].clone();
                 let new_id = self.heap.len();
                 self.heap.push(inst);
                 Type::StructRef(new_id)
             }
-
             Type::LazyInteger(ast) => Type::LazyInteger(ast),
             Type::Integer(n) => Type::Integer(n),
             Type::Function { params, body } => Type::Function { params, body },
-
             Type::LValue(_) => panic!("cannot clone lvalue"),
+            Type::Char(c) => Type::Char(c),
         }
     }
 
@@ -717,7 +727,7 @@ impl VM {
     fn eval_value(&mut self, ast: AST) -> Type {
         match ast {
             AST::Number(n) => Type::Integer(n),
-            AST::Char(c) => Type::Integer(c as i32),
+            AST::Char(c) => Type::Char(c),
             AST::Var(name) => self
                 .find_immutable(&name)
                 .cloned()
@@ -788,6 +798,7 @@ impl VM {
     fn as_int(&mut self, v: Type) -> i32 {
         match v {
             Type::Integer(n) => n,
+            Type::Char(c) => c as i32,
             Type::LazyInteger(ast) => self.evaluate(*ast),
             Type::ArrayRef(id) => self.array_heap[id].len() as i32,
             Type::StructRef(_) => panic!("cannot coerce struct ref to int"),

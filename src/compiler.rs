@@ -186,7 +186,25 @@ pub fn compile(
             code.push(Instruction::Jump(target));
         }
         AST::Char(c) => {
-            code.push(Instruction::Push(c as i32));
+            code.push(Instruction::PushChar(c));
+        }
+        AST::StringLiteral(s) => {
+            code.push(Instruction::Push(s.chars().count() as i32));
+            code.push(Instruction::ArrayNew);
+
+            let tmp = label_gen.fresh("__strlit");
+
+            code.push(Instruction::Store(tmp.clone()));
+
+            for (i, ch) in s.chars().enumerate() {
+                code.push(Instruction::Load(tmp.clone()));
+                code.push(Instruction::Push(i as i32));
+                code.push(Instruction::ArrayLValue);
+                code.push(Instruction::PushChar(ch as u32));
+                code.push(Instruction::StoreThrough);
+            }
+
+            code.push(Instruction::Load(tmp));
         }
     }
 }

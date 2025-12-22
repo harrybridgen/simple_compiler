@@ -67,6 +67,7 @@ impl Parser {
 
             Some(Token::Number(n)) => AST::Number(*n),
             Some(Token::Char(char)) => AST::Char(*char),
+            Some(Token::StringLiteral(str)) => AST::StringLiteral(str.clone()),
             Some(Token::Sub) => {
                 let right = self.parse_factor();
                 AST::Operation(

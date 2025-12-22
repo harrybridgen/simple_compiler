@@ -141,19 +141,16 @@ pub fn tokenize(input: &str) -> Vec<Token> {
             }
             '\'' => {
                 let ch = match chars.next() {
-                    Some('\\') => {
-                        // escape sequence
-                        match chars.next() {
-                            Some('n') => '\n',
-                            Some('t') => '\t',
-                            Some('r') => '\r',
-                            Some('0') => '\0',
-                            Some('\'') => '\'',
-                            Some('\\') => '\\',
-                            Some(c) => panic!("Invalid escape sequence: \\{c}"),
-                            None => panic!("Unterminated escape sequence"),
-                        }
-                    }
+                    Some('\\') => match chars.next() {
+                        Some('n') => '\n',
+                        Some('t') => '\t',
+                        Some('r') => '\r',
+                        Some('0') => '\0',
+                        Some('\'') => '\'',
+                        Some('\\') => '\\',
+                        Some(c) => panic!("Invalid escape sequence: \\{c}"),
+                        None => panic!("Unterminated escape sequence"),
+                    },
                     Some(c) => c,
                     None => panic!("Unterminated char literal"),
                 };
@@ -164,6 +161,30 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                     }
                     _ => panic!("Unterminated char literal"),
                 }
+            }
+            '"' => {
+                let mut s = String::new();
+
+                while let Some(c) = chars.next() {
+                    match c {
+                        '"' => break,
+                        '\\' => {
+                            let esc = match chars.next() {
+                                Some('n') => '\n',
+                                Some('t') => '\t',
+                                Some('r') => '\r',
+                                Some('"') => '"',
+                                Some('\\') => '\\',
+                                Some(c) => panic!("Invalid escape \\{c}"),
+                                None => panic!("Unterminated escape"),
+                            };
+                            s.push(esc);
+                        }
+                        c => s.push(c),
+                    }
+                }
+
+                tokens.push(Token::StringLiteral(s));
             }
 
             c if c.is_whitespace() => {}

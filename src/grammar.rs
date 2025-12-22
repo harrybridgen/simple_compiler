@@ -41,6 +41,7 @@ pub enum Token {
     Question,
     Colon,
     Char(u32),
+    StringLiteral(String),
 }
 
 use std::collections::HashMap;
@@ -55,6 +56,7 @@ pub enum Type {
 
     StructRef(usize),
     LValue(LValue),
+    Char(u32),
 }
 #[derive(Debug, Clone)]
 pub enum LValue {
@@ -119,6 +121,7 @@ pub enum AST {
         else_expr: Box<AST>,
     },
     Char(u32),
+    StringLiteral(String),
 }
 #[derive(Debug, Clone)]
 pub enum FieldAssignKind {
@@ -202,4 +205,5 @@ pub enum Instruction {
     StoreThroughReactive(Box<AST>),
     Import(Vec<String>),
     Return,
+    PushChar(u32),
 }
