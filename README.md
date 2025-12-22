@@ -1052,76 +1052,61 @@ printmatrix(D);
 
 ```
 
-### Moving String
+### Moving String with Reactive Framebuffer
 ```haskell
 # --- constants --- #
-width := 40;
+width := 30;
 height := 10;
+
 text := "HELLO REACTIVE";
 text_len := text;
 
-# --- framebuffer --- #
+text_y := height - 1;
+
 screen := [height];
 
-# --- init framebuffer --- #
-func init_screen() {
-    y = 0;
-    dy ::= y + 1;
+# loop setup #
+tx = 0;
+dir = 1;
+dtx ::= tx + dir;
+
+y = 0;
+dy ::= y + 1;
+
+# build screen reactive dependance graph # 
+loop {
+    if y >= height { break; }
+
+    screen[y] = [width];
+
+    x = 0;
+    dx ::= x + 1;
+
     loop {
-        if y >= height { break; }
-        screen[y] = [width];
+        if x >= width { break; }
 
-        x = 0;
-        dx ::= x + 1;
-        loop {
-            if x >= width { break; }
-            screen[y][x] = ' ';
-            x = dx;
-        }
+        screen[y][x] ::= (y == text_y && x >= tx && x < tx + text_len)
+                       ? text[x - tx]
+                       : (' ');
 
-        y = dy;
+
+        x = dx;
     }
+
+    y = dy;
 }
 
-# --- clear framebuffer --- #
-func clear_screen() {
-    y = 0;
-    dy ::= y + 1;
-    loop {
-        if y >= height { break; }
-
-        x = 0;
-        dx ::= x + 1;
-        loop {
-            if x >= width { break; }
-            screen[y][x] = ' ';
-            x = dx;
-        }
-
-        y = dy;
-    }
-}
-
-# --- draw string --- #
-func draw_text(x, y, s) {
-    i = 0;
-    di ::= i + 1;
-    loop {
-        if i >= s { break; }
-        screen[y][x + i] = s[i];
-        i = di;
-    }
-}
-
-# --- render framebuffer --- #
+# render (pure observation) #
 func render() {
     y = 0;
     dy ::= y + 1;
+
     loop {
         if y >= height { break; }
 
         x = 0;
         dx ::= x + 1;
+
         loop {
             if x >= width { break; }
             print screen[y][x];
@@ -1133,7 +1118,7 @@ func render() {
     }
 }
 
-# --- delay --- #
+#  delay  #
 func delay(n) {
     d = 0;
     dd ::= d + 1;
@@ -1143,18 +1128,8 @@ func delay(n) {
     }
 }
 
-# --- setup --- #
-init_screen();
-
-tx = 0;
-dir = 1;
-dtx ::= tx + dir;
-
-# --- main loop --- #
+# main loop (advance time only)  #
 loop {
-    clear_screen();
-
-    draw_text(tx, 4, text);
     render();
     delay(20000);
 
@@ -1162,7 +1137,9 @@ loop {
 
     if tx <= 0 { dir = 1; }
     if tx + text_len >= width { dir = -1; }
+
 }
+
 ```
 
 ## Grammar
