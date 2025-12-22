@@ -28,6 +28,9 @@ func framebuffer() {
 
 # render (pure observation) #
 func render() {
+    print clear_terminal;
+    print reset_cursor;
+
     y = 0;
     dy ::= y + 1;
 
@@ -61,13 +64,17 @@ func delay(n) {
 # ================== MAIN ================== # 
 
 # screen constants #
-width := 30;
-height := 7
+width := 31;
+height := 5;
 screen := [height];
 
 # text constants #
 text := "HELLO REACTIVE";
 text_len := text;
+
+# ESC CLI commands # 
+clear_terminal := "\033[2J"
+reset_cursor := "\033[H"
 
 # horizontal motion #
 tx = 0;
@@ -86,7 +93,7 @@ framebuffer();
 # main loop (advance time only) #
 loop {
     render();
-    delay(20000);
+    delay(10000);
 
     tx = dtx;
     ty = dty;

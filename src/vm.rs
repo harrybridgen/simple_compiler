@@ -90,15 +90,47 @@ impl VM {
                     scope.insert(name, v);
                 }
                 Instruction::Add => {
-                    let a = self.pop_int();
-                    let b = self.pop_int();
-                    self.stack.push(Type::Integer(b + a));
+                    let rhs = self.pop();
+                    let lhs = self.pop();
+
+                    match (lhs, rhs) {
+                        (Type::Char(c), Type::Integer(n)) | (Type::Integer(n), Type::Char(c)) => {
+                            self.stack.push(Type::Char((c as i32 + n) as u32));
+                        }
+
+                        (Type::Char(a), Type::Char(b)) => {
+                            self.stack.push(Type::Char((a + b) as u32));
+                        }
+
+                        (a, b) => {
+                            let ai = self.as_int(a);
+                            let bi = self.as_int(b);
+                            self.stack.push(Type::Integer(ai + bi));
+                        }
+                    }
                 }
+
                 Instruction::Sub => {
-                    let a = self.pop_int();
-                    let b = self.pop_int();
-                    self.stack.push(Type::Integer(b - a));
+                    let rhs = self.pop();
+                    let lhs = self.pop();
+
+                    match (lhs, rhs) {
+                        (Type::Char(c), Type::Integer(n)) | (Type::Integer(n), Type::Char(c)) => {
+                            self.stack.push(Type::Char((c as i32 - n) as u32));
+                        }
+
+                        (Type::Char(a), Type::Char(b)) => {
+                            self.stack.push(Type::Char((a - b) as u32));
+                        }
+
+                        (a, b) => {
+                            let ai = self.as_int(a);
+                            let bi = self.as_int(b);
+                            self.stack.push(Type::Integer(ai - bi));
+                        }
+                    }
                 }
+
                 Instruction::Mul => {
                     let a = self.pop_int();
                     let b = self.pop_int();
@@ -507,9 +539,24 @@ impl VM {
                     }
                 }
                 Instruction::Modulo => {
-                    let a = self.pop_int();
-                    let b = self.pop_int();
-                    self.stack.push(Type::Integer((b % a) as i32));
+                    let rhs = self.pop();
+                    let lhs = self.pop();
+
+                    match (lhs, rhs) {
+                        (Type::Char(c), Type::Integer(n)) | (Type::Integer(n), Type::Char(c)) => {
+                            self.stack.push(Type::Char((c as i32 % n) as u32));
+                        }
+
+                        (Type::Char(a), Type::Char(b)) => {
+                            self.stack.push(Type::Char((a % b) as u32));
+                        }
+
+                        (a, b) => {
+                            let ai = self.as_int(a);
+                            let bi = self.as_int(b);
+                            self.stack.push(Type::Integer(ai % bi));
+                        }
+                    }
                 }
                 Instruction::PushChar(c) => self.stack.push(Type::Char(c)),
             }
@@ -787,7 +834,20 @@ impl VM {
                 self.call_function(f, vals)
             }
 
-            AST::Operation(_, _, _) => Type::Integer(self.evaluate(ast)),
+            AST::Operation(l, op, r) => {
+                let lv = self.eval_value((*l).clone());
+                let rv = self.eval_value((*r).clone());
+
+                match (lv, rv, &op) {
+                    (Type::Char(c), Type::Integer(n), Operator::Addition) => {
+                        Type::Char((c as i32 + n) as u32)
+                    }
+                    (Type::Integer(n), Type::Char(c), Operator::Addition) => {
+                        Type::Char((c as i32 + n) as u32)
+                    }
+                    _ => Type::Integer(self.evaluate(AST::Operation(l, op, r))),
+                }
+            }
 
             _ => panic!(),
         }
