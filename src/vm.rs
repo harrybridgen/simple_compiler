@@ -1,4 +1,4 @@
-use crate::grammar::{AST, Instruction, Operator, StructFieldInit, Type, StructInstance, LValue};
+use crate::grammar::{AST, Instruction, LValue, Operator, StructFieldInit, StructInstance, Type};
 use std::collections::{HashMap, HashSet};
 
 pub struct VM {
@@ -25,9 +25,9 @@ impl VM {
             code,
             labels,
             struct_defs: HashMap::new(),
-            heap: Vec::new(),array_heap: Vec::new(),
+            heap: Vec::new(),
+            array_heap: Vec::new(),
             imported_modules: HashSet::new(),
-
         }
     }
 
@@ -153,12 +153,22 @@ impl VM {
                 Instruction::Print => {
                     let v = self.pop();
                     let n = self.as_int(v);
-                    print!("{n}");
+
+                    if let Some(ch) = char::from_u32(n as u32) {
+                        print!("{ch}");
+                    } else {
+                        print!("{n}");
+                    }
                 }
                 Instruction::Println => {
                     let v = self.pop();
                     let n = self.as_int(v);
-                    println!("{n}");
+
+                    if let Some(ch) = char::from_u32(n as u32) {
+                        println!("{ch}");
+                    } else {
+                        println!("{n}");
+                    }
                 }
                 Instruction::ArrayNew => {
                     let n = {
@@ -187,10 +197,7 @@ impl VM {
                             let len = arr_ref.len();
 
                             if idx >= len {
-                                panic!(
-                                    "array index out of bounds: index {}, length {}",
-                                    idx, len
-                                );
+                                panic!("array index out of bounds: index {}, length {}", idx, len);
                             }
 
                             let elem = arr_ref[idx].clone();
@@ -198,10 +205,7 @@ impl VM {
                             self.stack.push(out);
                         }
                         other => {
-                            panic!(
-                                "type error: attempted to index non-array value {:?}",
-                                other
-                            );
+                            panic!("type error: attempted to index non-array value {:?}", other);
                         }
                     }
                 }
@@ -248,7 +252,8 @@ impl VM {
                     }
                 }
                 Instruction::StoreFunction(name, params, body) => {
-                    self.environment.insert(name, Type::Function { params, body });
+                    self.environment
+                        .insert(name, Type::Function { params, body });
                 }
                 Instruction::Call(name, argc) => {
                     let mut args = Vec::with_capacity(argc);
@@ -294,9 +299,7 @@ impl VM {
                         Type::StructRef(id) => {
                             let v = self.heap[id].fields.get(&field).cloned().unwrap();
                             let out = match v {
-                                Type::LazyInteger(ast) => {
-                                    self.eval_reactive_field(*ast)
-                                }
+                                Type::LazyInteger(ast) => self.eval_reactive_field(*ast),
                                 other => other,
                             };
                             self.stack.push(out);
@@ -318,7 +321,6 @@ impl VM {
                             };
 
                             self.heap[id].fields.insert(field, stored);
-
                         }
                         _ => panic!(),
                     }
@@ -334,7 +336,9 @@ impl VM {
                                 panic!()
                             }
                             let frozen = self.freeze_ast(ast);
-                            self.heap[id].fields.insert(field, Type::LazyInteger(frozen));
+                            self.heap[id]
+                                .fields
+                                .insert(field, Type::LazyInteger(frozen));
                         }
                         _ => panic!(),
                     }
@@ -374,9 +378,10 @@ impl VM {
 
                     match base {
                         Type::ArrayRef(id) => {
-                            self.stack.push(Type::LValue(
-                                LValue::ArrayElem { array_id: id, index: idx }
-                            ));
+                            self.stack.push(Type::LValue(LValue::ArrayElem {
+                                array_id: id,
+                                index: idx,
+                            }));
                         }
 
                         Type::LValue(LValue::ArrayElem { array_id, index }) => {
@@ -385,9 +390,10 @@ impl VM {
                                 _ => panic!("indexing non-array"),
                             };
 
-                            self.stack.push(Type::LValue(
-                                LValue::ArrayElem { array_id: nested, index: idx }
-                            ));
+                            self.stack.push(Type::LValue(LValue::ArrayElem {
+                                array_id: nested,
+                                index: idx,
+                            }));
                         }
 
                         Type::LValue(LValue::StructField { struct_id, field }) => {
@@ -401,9 +407,10 @@ impl VM {
                                 _ => panic!("indexing non-array struct field"),
                             };
 
-                            self.stack.push(Type::LValue(
-                                LValue::ArrayElem { array_id, index: idx }
-                            ));
+                            self.stack.push(Type::LValue(LValue::ArrayElem {
+                                array_id,
+                                index: idx,
+                            }));
                         }
 
                         _ => panic!("invalid ArrayLValue base"),
@@ -414,18 +421,20 @@ impl VM {
 
                     match base {
                         Type::StructRef(id) => {
-                            self.stack.push(Type::LValue(
-                                LValue::StructField { struct_id: id, field }
-                            ));
+                            self.stack.push(Type::LValue(LValue::StructField {
+                                struct_id: id,
+                                field,
+                            }));
                         }
 
                         Type::LValue(LValue::ArrayElem { array_id, index }) => {
                             let elem = &self.array_heap[array_id][index];
                             match elem {
                                 Type::StructRef(id) => {
-                                    self.stack.push(Type::LValue(
-                                        LValue::StructField { struct_id: *id, field }
-                                    ));
+                                    self.stack.push(Type::LValue(LValue::StructField {
+                                        struct_id: *id,
+                                        field,
+                                    }));
                                 }
                                 _ => panic!("FieldLValue on non-struct array element"),
                             }
@@ -453,10 +462,7 @@ impl VM {
 
                         Type::LValue(LValue::StructField { struct_id, field }) => {
                             if self.heap[struct_id].immutables.contains(&field) {
-                                panic!(
-                                    "cannot assign to immutable field '{}'",
-                                    field
-                                );
+                                panic!("cannot assign to immutable field '{}'", field);
                             }
 
                             self.heap[struct_id].fields.insert(field, value);
@@ -469,7 +475,6 @@ impl VM {
                             );
                         }
                     }
-
                 }
                 Instruction::StoreThroughReactive(ast) => {
                     let target = self.pop();
@@ -482,17 +487,17 @@ impl VM {
 
                         Type::LValue(LValue::StructField { struct_id, field }) => {
                             if self.heap[struct_id].immutables.contains(&field) {
-                panic!("immutable field");
+                                panic!("immutable field");
                             }
                             self.heap[struct_id]
-                .fields
-                .insert(field, Type::LazyInteger(frozen));
+                                .fields
+                                .insert(field, Type::LazyInteger(frozen));
                         }
 
                         _ => panic!("StoreThroughReactive target is not an lvalue"),
                     }
                 }
-                Instruction::Modulo =>     {                
+                Instruction::Modulo => {
                     let a = self.pop_int();
                     let b = self.pop_int();
                     self.stack.push(Type::Integer((b % a) as i32));
@@ -503,174 +508,166 @@ impl VM {
         }
     }
 
-fn instantiate_struct(&mut self, fields: Vec<(String, Option<StructFieldInit>)>) -> Type {
-    let mut map = HashMap::new();
-    let mut imm = HashSet::new();
+    fn instantiate_struct(&mut self, fields: Vec<(String, Option<StructFieldInit>)>) -> Type {
+        let mut map = HashMap::new();
+        let mut imm = HashSet::new();
 
-    for (name, init) in fields {
-        match init {
-            None => {
-                map.insert(name, Type::Integer(0));
-            }
+        for (name, init) in fields {
+            match init {
+                None => {
+                    map.insert(name, Type::Integer(0));
+                }
 
-            Some(StructFieldInit::Mutable(ast)) => {
-                let v = self.eval_value(ast);
-                map.insert(name, self.clone_value(v));
-            }
+                Some(StructFieldInit::Mutable(ast)) => {
+                    let v = self.eval_value(ast);
+                    map.insert(name, self.clone_value(v));
+                }
 
-            Some(StructFieldInit::Immutable(ast)) => {
-                let v = self.eval_value(ast);
-                imm.insert(name.clone());
-                map.insert(name, self.clone_value(v));
-            }
+                Some(StructFieldInit::Immutable(ast)) => {
+                    let v = self.eval_value(ast);
+                    imm.insert(name.clone());
+                    map.insert(name, self.clone_value(v));
+                }
 
-            Some(StructFieldInit::Reactive(ast)) => {
-                let frozen = self.freeze_ast(Box::new(ast));
-                map.insert(name, Type::LazyInteger(frozen));
+                Some(StructFieldInit::Reactive(ast)) => {
+                    let frozen = self.freeze_ast(Box::new(ast));
+                    map.insert(name, Type::LazyInteger(frozen));
+                }
             }
         }
+
+        let id = self.heap.len();
+        self.heap.push(StructInstance {
+            fields: map,
+            immutables: imm,
+        });
+
+        Type::StructRef(id)
     }
 
-    let id = self.heap.len();
-    self.heap.push(StructInstance {
-        fields: map,
-        immutables: imm,
-    });
+    fn clone_value(&mut self, v: Type) -> Type {
+        match v {
+            Type::ArrayRef(id) => {
+                let new_id = self.array_heap.len();
+                self.array_heap.push(self.array_heap[id].clone());
+                Type::ArrayRef(new_id)
+            }
 
-    Type::StructRef(id)
-}
+            Type::StructRef(id) => {
+                let inst = self.heap[id].clone();
+                let new_id = self.heap.len();
+                self.heap.push(inst);
+                Type::StructRef(new_id)
+            }
 
+            Type::LazyInteger(ast) => Type::LazyInteger(ast),
+            Type::Integer(n) => Type::Integer(n),
+            Type::Function { params, body } => Type::Function { params, body },
 
-fn clone_value(&mut self, v: Type) -> Type {
-    match v {
-        Type::ArrayRef(id) => {
-            let new_id = self.array_heap.len();
-            self.array_heap.push(self.array_heap[id].clone());
-            Type::ArrayRef(new_id)
+            Type::LValue(_) => panic!("cannot clone lvalue"),
         }
-
-        Type::StructRef(id) => {
-            let inst = self.heap[id].clone();
-            let new_id = self.heap.len();
-            self.heap.push(inst);
-            Type::StructRef(new_id)
-        }
-
-        Type::LazyInteger(ast) => Type::LazyInteger(ast),
-        Type::Integer(n) => Type::Integer(n),
-        Type::Function { params, body } => Type::Function { params, body },
-
-        Type::LValue(_) => panic!("cannot clone lvalue"),
     }
-}
 
     fn call_function(&mut self, f: Type, args: Vec<Type>) -> Type {
-    match f {
-        Type::Function { params, body } => {
-    
-            self.immutable_stack.push(HashMap::new());
-            {
-                let scope = self.immutable_stack.last_mut().unwrap();
-                for (p, v) in params.into_iter().zip(args) {
-                    scope.insert(p, v);
+        match f {
+            Type::Function { params, body } => {
+                self.immutable_stack.push(HashMap::new());
+                {
+                    let scope = self.immutable_stack.last_mut().unwrap();
+                    for (p, v) in params.into_iter().zip(args) {
+                        scope.insert(p, v);
+                    }
                 }
+
+                let mut code = Vec::new();
+                let mut lg = crate::compiler::LabelGenerator::new();
+                let mut bs = Vec::new();
+
+                crate::compiler::compile(AST::Program(body), &mut code, &mut lg, &mut bs);
+
+                let saved_code = std::mem::replace(&mut self.code, code);
+                let saved_labels =
+                    std::mem::replace(&mut self.labels, Self::build_labels(&self.code));
+                let saved_ptr = self.pointer;
+                let saved_stack_len = self.stack.len();
+
+                self.pointer = 0;
+                self.run();
+
+                let ret = if self.stack.len() > saved_stack_len {
+                    self.pop()
+                } else {
+                    Type::Integer(0)
+                };
+
+                self.code = saved_code;
+                self.labels = saved_labels;
+                self.pointer = saved_ptr;
+                self.immutable_stack.pop();
+
+                ret
             }
-
-            let mut code = Vec::new();
-            let mut lg = crate::compiler::LabelGenerator::new();
-            let mut bs = Vec::new();
-
-            crate::compiler::compile(
-                AST::Program(body),
-                &mut code,
-                &mut lg,
-                &mut bs,
-            );
-
-      
-            let saved_code = std::mem::replace(&mut self.code, code);
-            let saved_labels =
-                std::mem::replace(&mut self.labels, Self::build_labels(&self.code));
-            let saved_ptr = self.pointer;
-            let saved_stack_len = self.stack.len();
-
-            self.pointer = 0;
-            self.run(); 
-
-     
-            let ret = if self.stack.len() > saved_stack_len {
-                self.pop()
-            } else {
-                Type::Integer(0)
-            };
-
-            self.code = saved_code;
-            self.labels = saved_labels;
-            self.pointer = saved_ptr;
-            self.immutable_stack.pop();
-
-            ret
+            _ => panic!("attempted to call non-function"),
         }
-        _ => panic!("attempted to call non-function"),
     }
-}
 
-
-
-fn evaluate(&mut self, ast: AST) -> i32 {
-    match ast {
-        AST::Number(n) => n,
-
-        AST::Var(name) => {
-            let v = self
-                .find_immutable(&name)
-                .cloned()
-                .or_else(|| self.environment.get(&name).cloned())
-                .unwrap();
-            self.as_int(v)
-        }
-        AST::Ternary { cond, then_expr, else_expr } => {
-            let c = self.evaluate(*cond);
-            if c != 0 {
-                self.evaluate(*then_expr)
-            } else {
-                self.evaluate(*else_expr)
+    fn evaluate(&mut self, ast: AST) -> i32 {
+        match ast {
+            AST::Number(n) => n,
+            AST::Char(c) => c as i32,
+            AST::Var(name) => {
+                let v = self
+                    .find_immutable(&name)
+                    .cloned()
+                    .or_else(|| self.environment.get(&name).cloned())
+                    .unwrap();
+                self.as_int(v)
             }
-        }
-
-        AST::Operation(l, op, r) => {
-            let a = self.evaluate(*l);
-            let b = self.evaluate(*r);
-            match op {
-                Operator::Addition => a + b,
-                Operator::Subtraction => a - b,
-                Operator::Multiplication => a * b,
-                Operator::Division => a / b,
-                Operator::Greater => (a > b) as i32,
-                Operator::Less => (a < b) as i32,
-                Operator::Equal => (a == b) as i32,
-                Operator::NotEqual => (a != b) as i32,
-                Operator::GreaterEqual => (a >= b) as i32,
-                Operator::LessEqual => (a <= b) as i32,
-                Operator::And => ((a > 0) && (b > 0)) as i32,
-                Operator::Or => ((a > 0) || (b > 0)) as i32,
-                Operator::Modulo => a % b  as i32,
-            }
-        }
-
-        AST::Index(base, index) => {
-            let idx = self.evaluate(*index) as usize;
-            let arr = self.eval_value(*base);
-
-            match arr {
-                Type::ArrayRef(id) => {
-                    let elem = self.array_heap[id].get(idx).cloned().unwrap();
-                    self.as_int(elem)
+            AST::Ternary {
+                cond,
+                then_expr,
+                else_expr,
+            } => {
+                let c = self.evaluate(*cond);
+                if c != 0 {
+                    self.evaluate(*then_expr)
+                } else {
+                    self.evaluate(*else_expr)
                 }
-                _ => panic!(),
             }
-        }
 
+            AST::Operation(l, op, r) => {
+                let a = self.evaluate(*l);
+                let b = self.evaluate(*r);
+                match op {
+                    Operator::Addition => a + b,
+                    Operator::Subtraction => a - b,
+                    Operator::Multiplication => a * b,
+                    Operator::Division => a / b,
+                    Operator::Greater => (a > b) as i32,
+                    Operator::Less => (a < b) as i32,
+                    Operator::Equal => (a == b) as i32,
+                    Operator::NotEqual => (a != b) as i32,
+                    Operator::GreaterEqual => (a >= b) as i32,
+                    Operator::LessEqual => (a <= b) as i32,
+                    Operator::And => ((a > 0) && (b > 0)) as i32,
+                    Operator::Or => ((a > 0) || (b > 0)) as i32,
+                    Operator::Modulo => a % b as i32,
+                }
+            }
+
+            AST::Index(base, index) => {
+                let idx = self.evaluate(*index) as usize;
+                let arr = self.eval_value(*base);
+
+                match arr {
+                    Type::ArrayRef(id) => {
+                        let elem = self.array_heap[id].get(idx).cloned().unwrap();
+                        self.as_int(elem)
+                    }
+                    _ => panic!(),
+                }
+            }
 
             AST::FieldAccess(base, field) => {
                 let obj = self.eval_value(*base);
@@ -692,15 +689,14 @@ fn evaluate(&mut self, ast: AST) -> i32 {
                 }
             }
 
-
             AST::Call { name, args } => {
                 let mut vals = Vec::with_capacity(args.len());
                 for a in args {
-                    vals.push(self.eval_value(a)); 
+                    vals.push(self.eval_value(a));
                 }
                 let f = self.environment.get(&name).cloned().unwrap();
                 let out = self.call_function(f, vals);
-                self.as_int(out) 
+                self.as_int(out)
             }
 
             other => {
@@ -709,86 +705,85 @@ fn evaluate(&mut self, ast: AST) -> i32 {
             }
         }
     }
-fn eval_reactive_field(&mut self, ast: AST) -> Type {
-    let saved_stack = std::mem::take(&mut self.immutable_stack);
-    self.immutable_stack.push(HashMap::new());
-    let result = self.eval_value(ast);
-    self.immutable_stack = saved_stack;
+    fn eval_reactive_field(&mut self, ast: AST) -> Type {
+        let saved_stack = std::mem::take(&mut self.immutable_stack);
+        self.immutable_stack.push(HashMap::new());
+        let result = self.eval_value(ast);
+        self.immutable_stack = saved_stack;
 
-    result
-}
+        result
+    }
 
-
-
-fn eval_value(&mut self, ast: AST) -> Type {
-    match ast {
-        AST::Number(n) => Type::Integer(n),
-
-        AST::Var(name) => self
-            .find_immutable(&name)
-            .cloned()
-            .or_else(|| self.environment.get(&name).cloned())
-            .unwrap(),
-        AST::Ternary { cond, then_expr, else_expr } => {
-            let c = self.evaluate(*cond);
-            if c != 0 {
-                self.eval_value(*then_expr)
-            } else {
-                self.eval_value(*else_expr)
-            }
-        }
-
-        AST::ArrayNew(size_ast) => {
-            let n = self.evaluate(*size_ast) as usize;
-            let id = self.array_heap.len();
-            self.array_heap.push(vec![Type::Integer(0); n]);
-            Type::ArrayRef(id)
-        }
-
-        AST::FieldAccess(base, field) => {
-            let obj = self.eval_value(*base);
-            match obj {
-                Type::StructRef(id) => {
-                    let v = self.heap[id].fields.get(&field).cloned().unwrap();
-                    match v {
-                        Type::LazyInteger(ast) => self.eval_reactive_field(*ast),
-                        other => other,
-                    }
+    fn eval_value(&mut self, ast: AST) -> Type {
+        match ast {
+            AST::Number(n) => Type::Integer(n),
+            AST::Char(c) => Type::Integer(c as i32),
+            AST::Var(name) => self
+                .find_immutable(&name)
+                .cloned()
+                .or_else(|| self.environment.get(&name).cloned())
+                .unwrap(),
+            AST::Ternary {
+                cond,
+                then_expr,
+                else_expr,
+            } => {
+                let c = self.evaluate(*cond);
+                if c != 0 {
+                    self.eval_value(*then_expr)
+                } else {
+                    self.eval_value(*else_expr)
                 }
-                _ => panic!(),
             }
-        }
 
-AST::Index(base, index) => {
-    let idx = self.evaluate(*index) as usize;
-    let arr = self.eval_value(*base);
-
-    match arr {
-        Type::ArrayRef(id) => {
-            let elem = self.array_heap[id].get(idx).cloned().unwrap();
-            self.load_value(elem)
-        }
-        _ => panic!(),
-    }
-}
-
-
-        AST::Call { name, args } => {
-            let mut vals = Vec::with_capacity(args.len());
-            for a in args {
-                vals.push(self.eval_value(a));
+            AST::ArrayNew(size_ast) => {
+                let n = self.evaluate(*size_ast) as usize;
+                let id = self.array_heap.len();
+                self.array_heap.push(vec![Type::Integer(0); n]);
+                Type::ArrayRef(id)
             }
-            let f = self.environment.get(&name).cloned().unwrap();
-            self.call_function(f, vals)
+
+            AST::FieldAccess(base, field) => {
+                let obj = self.eval_value(*base);
+                match obj {
+                    Type::StructRef(id) => {
+                        let v = self.heap[id].fields.get(&field).cloned().unwrap();
+                        match v {
+                            Type::LazyInteger(ast) => self.eval_reactive_field(*ast),
+                            other => other,
+                        }
+                    }
+                    _ => panic!(),
+                }
+            }
+
+            AST::Index(base, index) => {
+                let idx = self.evaluate(*index) as usize;
+                let arr = self.eval_value(*base);
+
+                match arr {
+                    Type::ArrayRef(id) => {
+                        let elem = self.array_heap[id].get(idx).cloned().unwrap();
+                        self.load_value(elem)
+                    }
+                    _ => panic!(),
+                }
+            }
+
+            AST::Call { name, args } => {
+                let mut vals = Vec::with_capacity(args.len());
+                for a in args {
+                    vals.push(self.eval_value(a));
+                }
+                let f = self.environment.get(&name).cloned().unwrap();
+                self.call_function(f, vals)
+            }
+
+            AST::Operation(_, _, _) => Type::Integer(self.evaluate(ast)),
+
+            _ => panic!(),
         }
-
-        AST::Operation(_, _, _) => Type::Integer(self.evaluate(ast)),
-
-        _ => panic!(),
     }
-}
-
-
 
     fn as_int(&mut self, v: Type) -> i32 {
         match v {
@@ -798,7 +793,6 @@ AST::Index(base, index) => {
             Type::StructRef(_) => panic!("cannot coerce struct ref to int"),
             Type::Function { .. } => panic!("cannot coerce function to int"),
             Type::LValue(_) => panic!("cannot coerce lvalue to int"),
-
         }
     }
 
@@ -820,10 +814,17 @@ AST::Index(base, index) => {
                 }
             }
             AST::Number(n) => Box::new(AST::Number(n)),
-            AST::Operation(l, o, r) => Box::new(AST::Operation(self.freeze_ast(l), o, self.freeze_ast(r))),
+            AST::Char(c) => Box::new(AST::Char(c)),
+            AST::Operation(l, o, r) => {
+                Box::new(AST::Operation(self.freeze_ast(l), o, self.freeze_ast(r)))
+            }
             AST::Index(b, i) => Box::new(AST::Index(self.freeze_ast(b), self.freeze_ast(i))),
             AST::FieldAccess(b, f) => Box::new(AST::FieldAccess(self.freeze_ast(b), f)),
-            AST::Ternary { cond, then_expr, else_expr } => Box::new(AST::Ternary {
+            AST::Ternary {
+                cond,
+                then_expr,
+                else_expr,
+            } => Box::new(AST::Ternary {
                 cond: self.freeze_ast(cond),
                 then_expr: self.freeze_ast(then_expr),
                 else_expr: self.freeze_ast(else_expr),
@@ -850,31 +851,30 @@ AST::Index(base, index) => {
         self.as_int(v)
     }
     fn import_module(&mut self, path: Vec<String>) {
-    let file_path = format!("project/{}.rx", path.join("/"));
+        let file_path = format!("project/{}.rx", path.join("/"));
 
-    let source = std::fs::read_to_string(&file_path)
-        .unwrap_or_else(|_| panic!("could not import module `{}`", file_path));
+        let source = std::fs::read_to_string(&file_path)
+            .unwrap_or_else(|_| panic!("could not import module `{}`", file_path));
 
-    let tokens = crate::tokenizer::tokenize(&source);
-    //println!("TOKENS FROM {}: {:?}", file_path, tokens);
-    let ast = crate::parser::parse(tokens);
+        let tokens = crate::tokenizer::tokenize(&source);
+        //println!("TOKENS FROM {}: {:?}", file_path, tokens);
+        let ast = crate::parser::parse(tokens);
 
-    let mut code = Vec::new();
-    let mut lg = crate::compiler::LabelGenerator::new();
-    let mut bs = Vec::new();
+        let mut code = Vec::new();
+        let mut lg = crate::compiler::LabelGenerator::new();
+        let mut bs = Vec::new();
 
-    crate::compiler::compile(ast, &mut code, &mut lg, &mut bs);
+        crate::compiler::compile(ast, &mut code, &mut lg, &mut bs);
 
-    let saved_code = std::mem::replace(&mut self.code, code);
-    let saved_labels = std::mem::replace(&mut self.labels, Self::build_labels(&self.code));
-    let saved_ptr = self.pointer;
+        let saved_code = std::mem::replace(&mut self.code, code);
+        let saved_labels = std::mem::replace(&mut self.labels, Self::build_labels(&self.code));
+        let saved_ptr = self.pointer;
 
-    self.pointer = 0;
-    self.run();
+        self.pointer = 0;
+        self.run();
 
-    self.code = saved_code;
-    self.labels = saved_labels;
-    self.pointer = saved_ptr;
-}
-
+        self.code = saved_code;
+        self.labels = saved_labels;
+        self.pointer = saved_ptr;
+    }
 }

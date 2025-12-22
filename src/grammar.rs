@@ -22,19 +22,25 @@ pub enum Token {
     If,
     Else,
     LBrace,
-    RBrace, LSquare, RSquare,
+    RBrace,
+    LSquare,
+    RSquare,
     Loop,
     Break,
     LessEqual,
     GreaterEqual,
     NotEqual,
-    Not,    
+    Not,
     Func,
     Return,
     Struct,
     Dot,
-    Comma,Import,Modulo,Question,
-Colon,
+    Comma,
+    Import,
+    Modulo,
+    Question,
+    Colon,
+    Char(u32),
 }
 
 use std::collections::HashMap;
@@ -45,12 +51,10 @@ pub enum Type {
     LazyInteger(Box<AST>),
     ArrayRef(usize),
 
-    Function {
-        params: Vec<String>,
-        body: Vec<AST>,
-    },
+    Function { params: Vec<String>, body: Vec<AST> },
 
-    StructRef(usize),LValue(LValue),
+    StructRef(usize),
+    LValue(LValue),
 }
 #[derive(Debug, Clone)]
 pub enum LValue {
@@ -78,9 +82,9 @@ pub enum AST {
     Break,
     Import(Vec<String>),
 
-    ArrayNew(Box<AST>),                  
-    Index(Box<AST>, Box<AST>),          
-    AssignTarget(Box<AST>, Box<AST>),    
+    ArrayNew(Box<AST>),
+    Index(Box<AST>, Box<AST>),
+    AssignTarget(Box<AST>, Box<AST>),
     ReactiveAssignTarget(Box<AST>, Box<AST>),
     FuncDef {
         name: String,
@@ -114,6 +118,7 @@ pub enum AST {
         then_expr: Box<AST>,
         else_expr: Box<AST>,
     },
+    Char(u32),
 }
 #[derive(Debug, Clone)]
 pub enum FieldAssignKind {
@@ -143,7 +148,7 @@ pub enum Operator {
     Equal,
     Or,
     And,
-    Modulo
+    Modulo,
 }
 
 #[derive(Debug, Clone)]
@@ -171,11 +176,11 @@ pub enum Instruction {
     Jump(String),
     JumpIfZero(String),
 
-Modulo,
-    
-    ArrayNew, 
+    Modulo,
+
+    ArrayNew,
     ArrayGet,
-    StoreIndex(String),            
+    StoreIndex(String),
     StoreIndexReactive(String, Box<AST>),
     PushImmutableContext,
     PopImmutableContext,
@@ -189,13 +194,12 @@ Modulo,
     FieldSet(String),
     FieldSetReactive(String, Box<AST>),
 
-    Call(String,usize),
+    Call(String, usize),
 
-    ArrayLValue,                 
-    FieldLValue(String),        
-    StoreThrough,             
-    StoreThroughReactive(Box<AST>), 
+    ArrayLValue,
+    FieldLValue(String),
+    StoreThrough,
+    StoreThroughReactive(Box<AST>),
     Import(Vec<String>),
-    Return
-
+    Return,
 }

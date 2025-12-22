@@ -65,9 +65,8 @@ impl Parser {
                 }
             }
 
-
             Some(Token::Number(n)) => AST::Number(*n),
-
+            Some(Token::Char(char)) => AST::Char(*char),
             Some(Token::Sub) => {
                 let right = self.parse_factor();
                 AST::Operation(
@@ -119,7 +118,7 @@ impl Parser {
                 }
 
                 Some(Token::Dot) => {
-                    self.next(); 
+                    self.next();
                     let field = self.expect_ident();
                     ast = AST::FieldAccess(Box::new(ast), field);
                 }
@@ -225,13 +224,12 @@ impl Parser {
             self.next();
             let then_expr = self.parse_ternary();
 
-
             match self.next() {
                 Some(Token::Colon) => {}
                 other => panic!("Expected ':' in ternary, got {:?}", other),
             }
 
-            let else_expr = self.parse_ternary(); 
+            let else_expr = self.parse_ternary();
             AST::Ternary {
                 cond: Box::new(cond),
                 then_expr: Box::new(then_expr),
@@ -243,7 +241,7 @@ impl Parser {
     }
 
     fn parse_if(&mut self) -> AST {
-        self.next(); 
+        self.next();
 
         let cond = self.parse_ternary();
         let then_branch = self.parse_block();
@@ -285,7 +283,7 @@ impl Parser {
     }
 
     fn parse_func_def(&mut self) -> AST {
-        self.next(); 
+        self.next();
         let name = self.expect_ident();
 
         self.expect(Token::LParen);
@@ -351,7 +349,7 @@ impl Parser {
     }
 
     fn parse_return(&mut self) -> AST {
-        self.next(); 
+        self.next();
 
         if matches!(self.peek(), Some(Token::Semicolon)) {
             return AST::Return(None);
@@ -368,13 +366,13 @@ impl Parser {
 
     fn parse_statement(&mut self) -> AST {
         if let Some(Token::Import) = self.peek() {
-            self.next(); 
+            self.next();
 
             let mut path = Vec::new();
             path.push(self.expect_ident());
 
             while matches!(self.peek(), Some(Token::Dot)) {
-                self.next(); 
+                self.next();
                 path.push(self.expect_ident());
             }
 
@@ -427,7 +425,7 @@ impl Parser {
                 Some(Token::Assign | Token::ReactiveAssign | Token::ImmutableAssign)
             ) {
                 let name = name.clone();
-                self.next(); 
+                self.next();
                 let op = self.next().cloned().unwrap();
                 let expr = self.parse_ternary();
 

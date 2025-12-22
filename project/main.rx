@@ -1,59 +1,16 @@
-println 1;
+c = 'a';
+arr = [3];
 
-# ---------- basic ternary ---------- #
-a := 10;
-b = a > 5 ? 100 : 200;
-println b;
+arr[0] ::= c;
+arr[1] ::= c + 1;
+arr[2] ::= c + 2;
 
-# ---------- false branch ---------- #
-c := a < 5 ? 1 : 2;
-println c;
+println arr[0];
+println arr[1];
+println arr[2];
 
-# ---------- precedence ---------- #
-d := 1 + 2 > 2 ? 10 : 20;
-println d;
+c = 'x';
 
-# ---------- nested ternary ---------- #
-e := a > 0 ? a > 20 ? 1 : 2 : 3;
-println e;
-
-# ---------- ternary in print ---------- #
-println a > 0 ? 7 : 9;
-
-# ---------- reactive ternary ---------- #
-x = 3;
-y ::= x > 5 ? 10 : 20;
-println y;
-
-x = 7;
-println y;
-
-# ---------- ternary in struct ---------- #
-struct Test {
-    val := 5 > 3 ? 111 : 222;
-}
-
-t := struct Test;
-println t.val;
-
-# ---------- ternary with struct field ---------- #
-struct Box {
-    n := 10;
-}
-
-b := struct Box;
-println b.n > 5 ? 1 : 0;
-
-# ---------- ternary in function ---------- #
-func choose(x) {
-    return x > 0 ? 1 : -1;
-}
-
-println choose(5);
-println choose(-3);
-
-# ---------- ternary inside ternary ---------- #
-f := 0 > 1 ? 10 : 1 > 0 ? 20 : 30;
-println f;
-
-println 999;
+println arr[0];
+println arr[1];
+println arr[2];

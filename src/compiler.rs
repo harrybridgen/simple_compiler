@@ -1,4 +1,4 @@
-use crate::grammar::{AST, Instruction, Operator, FieldAssignKind};
+use crate::grammar::{AST, FieldAssignKind, Instruction, Operator};
 
 pub fn compile(
     ast: AST,
@@ -9,18 +9,20 @@ pub fn compile(
     match ast {
         AST::Number(n) => code.push(Instruction::Push(n)),
         AST::Var(name) => code.push(Instruction::Load(name)),
-
         AST::ArrayNew(size_expr) => {
             compile(*size_expr, code, label_gen, break_stack);
             code.push(Instruction::ArrayNew);
         }
-
         AST::Index(base, index) => {
             compile(*base, code, label_gen, break_stack);
             compile(*index, code, label_gen, break_stack);
             code.push(Instruction::ArrayGet);
         }
-        AST::Ternary { cond, then_expr, else_expr } => {
+        AST::Ternary {
+            cond,
+            then_expr,
+            else_expr,
+        } => {
             compile(*cond, code, label_gen, break_stack);
 
             let else_label = label_gen.fresh("ternary_else");
@@ -36,7 +38,6 @@ pub fn compile(
 
             code.push(Instruction::Label(end_label));
         }
-
         AST::Operation(left, operator, right) => {
             compile(*left, code, label_gen, break_stack);
             compile(*right, code, label_gen, break_stack);
@@ -56,38 +57,36 @@ pub fn compile(
                 Operator::Modulo => code.push(Instruction::Modulo),
             }
         }
-
         AST::Assign(name, expr) => {
             compile(*expr, code, label_gen, break_stack);
             code.push(Instruction::Store(name));
         }
-
         AST::ReactiveAssign(name, expr) => {
             code.push(Instruction::StoreReactive(name, expr));
         }
-
         AST::ImmutableAssign(name, expr) => {
             compile(*expr, code, label_gen, break_stack);
             code.push(Instruction::StoreImmutable(name));
         }
-
         AST::FieldAccess(base, field) => {
             compile(*base, code, label_gen, break_stack);
             code.push(Instruction::FieldGet(field));
         }
-
         AST::AssignTarget(target, value) => {
             compile_lvalue(*target, code, label_gen, break_stack);
             compile(*value, code, label_gen, break_stack);
             code.push(Instruction::StoreThrough);
         }
-
         AST::ReactiveAssignTarget(target, value) => {
             compile_lvalue(*target, code, label_gen, break_stack);
             code.push(Instruction::StoreThroughReactive(value));
         }
-
-        AST::FieldAssign { base, field, value, kind } => match kind {
+        AST::FieldAssign {
+            base,
+            field,
+            value,
+            kind,
+        } => match kind {
             FieldAssignKind::Normal => {
                 compile(*base, code, label_gen, break_stack);
                 compile(*value, code, label_gen, break_stack);
@@ -101,11 +100,9 @@ pub fn compile(
                 panic!("immutable field assignment not allowed");
             }
         },
-
         AST::FuncDef { name, params, body } => {
             code.push(Instruction::StoreFunction(name, params, body));
         }
-
         AST::Return(expr) => {
             if let Some(e) = expr {
                 compile(*e, code, label_gen, break_stack);
@@ -114,7 +111,6 @@ pub fn compile(
             }
             code.push(Instruction::Return);
         }
-
         AST::Call { name, args } => {
             let argc = args.len();
             for arg in args {
@@ -122,25 +118,20 @@ pub fn compile(
             }
             code.push(Instruction::Call(name, argc));
         }
-
         AST::StructDef { name, fields } => {
             code.push(Instruction::StoreStruct(name, fields));
         }
-
         AST::StructNew(name) => {
             code.push(Instruction::NewStruct(name));
         }
-
         AST::Print(expr) => {
             compile(*expr, code, label_gen, break_stack);
             code.push(Instruction::Print);
         }
-
         AST::Println(expr) => {
             compile(*expr, code, label_gen, break_stack);
             code.push(Instruction::Println);
         }
-
         AST::Program(statements) => {
             for stmt in statements {
                 compile(stmt, code, label_gen, break_stack);
@@ -168,7 +159,6 @@ pub fn compile(
 
             code.push(Instruction::Label(end_label));
         }
-
         AST::Loop(block) => {
             let loop_start = label_gen.fresh("loop_start");
             let loop_end = label_gen.fresh("loop_end");
@@ -188,13 +178,15 @@ pub fn compile(
 
             break_stack.pop();
         }
-
         AST::Break => {
             let target = break_stack
                 .last()
                 .expect("break used outside of loop")
                 .clone();
             code.push(Instruction::Jump(target));
+        }
+        AST::Char(c) => {
+            code.push(Instruction::Push(c as i32));
         }
     }
 }
@@ -227,8 +219,6 @@ fn compile_lvalue(
         }
     }
 }
-
-
 
 pub struct LabelGenerator {
     counter: usize,
