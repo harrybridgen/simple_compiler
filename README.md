@@ -58,6 +58,18 @@ println b.x;   # 0 #
 
 Struct fields are not shared between instances.
 
+Inside functions, Mutable Assignments act within the global environment.
+```haskell
+func foo(){
+    x = 10;
+}
+
+x = 1;
+foo();
+
+println x; # 10, not 1 #
+```
+
 ### `::=` Reactive Assignment (relationships)
 
 `::=` defines a **relationship** between locations.  
