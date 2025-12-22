@@ -20,6 +20,22 @@ pub fn compile(
             compile(*index, code, label_gen, break_stack);
             code.push(Instruction::ArrayGet);
         }
+        AST::Ternary { cond, then_expr, else_expr } => {
+            compile(*cond, code, label_gen, break_stack);
+
+            let else_label = label_gen.fresh("ternary_else");
+            let end_label = label_gen.fresh("ternary_end");
+
+            code.push(Instruction::JumpIfZero(else_label.clone()));
+
+            compile(*then_expr, code, label_gen, break_stack);
+            code.push(Instruction::Jump(end_label.clone()));
+
+            code.push(Instruction::Label(else_label));
+            compile(*else_expr, code, label_gen, break_stack);
+
+            code.push(Instruction::Label(end_label));
+        }
 
         AST::Operation(left, operator, right) => {
             compile(*left, code, label_gen, break_stack);

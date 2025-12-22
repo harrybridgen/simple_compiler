@@ -33,7 +33,8 @@ pub enum Token {
     Return,
     Struct,
     Dot,
-    Comma,Import,Modulo
+    Comma,Import,Modulo,Question,
+Colon,
 }
 
 use std::collections::HashMap;
@@ -103,11 +104,16 @@ pub enum AST {
 
     FieldAccess(Box<AST>, String),
     FieldAssign {
-    base: Box<AST>,
-    field: String,
-    value: Box<AST>,
-    kind: FieldAssignKind,
-},
+        base: Box<AST>,
+        field: String,
+        value: Box<AST>,
+        kind: FieldAssignKind,
+    },
+    Ternary {
+        cond: Box<AST>,
+        then_expr: Box<AST>,
+        else_expr: Box<AST>,
+    },
 }
 #[derive(Debug, Clone)]
 pub enum FieldAssignKind {

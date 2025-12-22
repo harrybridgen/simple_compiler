@@ -49,7 +49,7 @@ impl Parser {
                     let mut args = Vec::new();
                     if !matches!(self.peek(), Some(Token::RParen)) {
                         loop {
-                            args.push(self.parse_or());
+                            args.push(self.parse_ternary());
                             if matches!(self.peek(), Some(Token::Comma)) {
                                 self.next();
                             } else {
@@ -78,7 +78,7 @@ impl Parser {
             }
 
             Some(Token::LParen) => {
-                let expr = self.parse_or();
+                let expr = self.parse_ternary();
                 match self.next() {
                     Some(Token::RParen) => expr,
                     _ => panic!("[parse_factor] Expected ')'"),
@@ -86,7 +86,7 @@ impl Parser {
             }
 
             Some(Token::LSquare) => {
-                let size_expr = self.parse_or();
+                let size_expr = self.parse_ternary();
                 match self.next() {
                     Some(Token::RSquare) => AST::ArrayNew(Box::new(size_expr)),
                     _ => panic!("[parse_factor] Expected ']'"),
@@ -109,7 +109,7 @@ impl Parser {
             match self.peek() {
                 Some(Token::LSquare) => {
                     self.next();
-                    let index_expr = self.parse_or();
+                    let index_expr = self.parse_ternary();
                     match self.next() {
                         Some(Token::RSquare) => {
                             ast = AST::Index(Box::new(ast), Box::new(index_expr));
@@ -218,11 +218,34 @@ impl Parser {
 
         ast
     }
+    fn parse_ternary(&mut self) -> AST {
+        let cond = self.parse_or();
+
+        if matches!(self.peek(), Some(Token::Question)) {
+            self.next();
+            let then_expr = self.parse_ternary();
+
+
+            match self.next() {
+                Some(Token::Colon) => {}
+                other => panic!("Expected ':' in ternary, got {:?}", other),
+            }
+
+            let else_expr = self.parse_ternary(); 
+            AST::Ternary {
+                cond: Box::new(cond),
+                then_expr: Box::new(then_expr),
+                else_expr: Box::new(else_expr),
+            }
+        } else {
+            cond
+        }
+    }
 
     fn parse_if(&mut self) -> AST {
         self.next(); 
 
-        let cond = self.parse_or();
+        let cond = self.parse_ternary();
         let then_branch = self.parse_block();
 
         let else_branch = if let Some(Token::Else) = self.peek() {
@@ -302,15 +325,15 @@ impl Parser {
             let init = match self.peek() {
                 Some(Token::Assign) => {
                     self.next();
-                    Some(StructFieldInit::Mutable(self.parse_or()))
+                    Some(StructFieldInit::Mutable(self.parse_ternary()))
                 }
                 Some(Token::ImmutableAssign) => {
                     self.next();
-                    Some(StructFieldInit::Immutable(self.parse_or()))
+                    Some(StructFieldInit::Immutable(self.parse_ternary()))
                 }
                 Some(Token::ReactiveAssign) => {
                     self.next();
-                    Some(StructFieldInit::Reactive(self.parse_or()))
+                    Some(StructFieldInit::Reactive(self.parse_ternary()))
                 }
                 _ => None,
             };
@@ -337,7 +360,7 @@ impl Parser {
         match self.peek() {
             Some(Token::RBrace) | None => AST::Return(None),
             _ => {
-                let expr = self.parse_or();
+                let expr = self.parse_ternary();
                 AST::Return(Some(Box::new(expr)))
             }
         }
@@ -382,13 +405,13 @@ impl Parser {
 
         if let Some(Token::Print) = self.peek() {
             self.next();
-            let expr = self.parse_or();
+            let expr = self.parse_ternary();
             return AST::Print(Box::new(expr));
         }
 
         if let Some(Token::Println) = self.peek() {
             self.next();
-            let expr = self.parse_or();
+            let expr = self.parse_ternary();
             return AST::Println(Box::new(expr));
         }
 
@@ -406,7 +429,7 @@ impl Parser {
                 let name = name.clone();
                 self.next(); 
                 let op = self.next().cloned().unwrap();
-                let expr = self.parse_or();
+                let expr = self.parse_ternary();
 
                 return match op {
                     Token::Assign => AST::Assign(name, Box::new(expr)),
@@ -417,18 +440,18 @@ impl Parser {
             }
         }
 
-        let expr = self.parse_or();
+        let expr = self.parse_ternary();
 
         match self.peek() {
             Some(Token::Assign) => {
                 self.next();
-                let rhs = self.parse_or();
+                let rhs = self.parse_ternary();
                 AST::AssignTarget(Box::new(expr), Box::new(rhs))
             }
 
             Some(Token::ReactiveAssign) => {
                 self.next();
-                let rhs = self.parse_or();
+                let rhs = self.parse_ternary();
                 AST::ReactiveAssignTarget(Box::new(expr), Box::new(rhs))
             }
 

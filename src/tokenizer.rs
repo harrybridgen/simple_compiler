@@ -58,15 +58,16 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                     if let Some('=') = chars.next() {
                         tokens.push(Token::ReactiveAssign);
                     } else {
-                        panic!("Did not find matching '=' for reactive eval '::'")
+                        panic!("Expected '=' after '::'");
                     }
                 } else if let Some('=') = chars.peek() {
                     chars.next();
                     tokens.push(Token::ImmutableAssign);
                 } else {
-                    panic!("Did not find matching '=' for immutable ':'")
+                    tokens.push(Token::Colon);
                 }
             }
+            '?' => tokens.push(Token::Question),
             '%' => {tokens.push(Token::Modulo);}
             '|' => {
                 if let Some('|') = chars.peek() {

@@ -1,55 +1,59 @@
-import std.hashmap;
+println 1;
 
-struct Pair {
-    i = 0;
-    j = 0;
+# ---------- basic ternary ---------- #
+a := 10;
+b = a > 5 ? 100 : 200;
+println b;
+
+# ---------- false branch ---------- #
+c := a < 5 ? 1 : 2;
+println c;
+
+# ---------- precedence ---------- #
+d := 1 + 2 > 2 ? 10 : 20;
+println d;
+
+# ---------- nested ternary ---------- #
+e := a > 0 ? a > 20 ? 1 : 2 : 3;
+println e;
+
+# ---------- ternary in print ---------- #
+println a > 0 ? 7 : 9;
+
+# ---------- reactive ternary ---------- #
+x = 3;
+y ::= x > 5 ? 10 : 20;
+println y;
+
+x = 7;
+println y;
+
+# ---------- ternary in struct ---------- #
+struct Test {
+    val := 5 > 3 ? 111 : 222;
 }
-func twosum(arr, target) {
-    m := hashmap(arr);
-    p := struct Pair;
 
-    idx = 0;
-    didx ::= idx + 1;
+t := struct Test;
+println t.val;
 
-    loop {
-        if idx >= arr {
-            break;
-        }
-
-        x := arr[idx];
-        want := target - x;
-
-        if has(m, want) {
-            p.i = get(m, want);
-            p.j = idx;
-            return p;
-        }
-
-        put(m, x, idx);
-        idx = didx;
-    }
-
-    return p;
+# ---------- ternary with struct field ---------- #
+struct Box {
+    n := 10;
 }
 
-# ---- test ---- #
-nums = [4];
-nums[0] = 2;
-nums[1] = 7;
-nums[2] = 11;
-nums[3] = 15;
+b := struct Box;
+println b.n > 5 ? 1 : 0;
 
-result := struct Pair;
+# ---------- ternary in function ---------- #
+func choose(x) {
+    return x > 0 ? 1 : -1;
+}
 
-result.i ::= twosum(nums, 9).i;
-result.j ::= twosum(nums, 9).j;
+println choose(5);
+println choose(-3);
 
-println result.i; # 0 #
-println result.j; # 1 #
+# ---------- ternary inside ternary ---------- #
+f := 0 > 1 ? 10 : 1 > 0 ? 20 : 30;
+println f;
 
-nums[0] = 12;
-nums[2] = 1;
-nums[3] = 8
-
-println result.i; # 2 #
-println result.j; # 3 #
+println 999;

@@ -295,7 +295,7 @@ impl VM {
                             let v = self.heap[id].fields.get(&field).cloned().unwrap();
                             let out = match v {
                                 Type::LazyInteger(ast) => {
-                                    self.eval_reactive_field(id, *ast)
+                                    self.eval_reactive_field(*ast)
                                 }
                                 other => other,
                             };
@@ -629,6 +629,14 @@ fn evaluate(&mut self, ast: AST) -> i32 {
                 .unwrap();
             self.as_int(v)
         }
+        AST::Ternary { cond, then_expr, else_expr } => {
+            let c = self.evaluate(*cond);
+            if c != 0 {
+                self.evaluate(*then_expr)
+            } else {
+                self.evaluate(*else_expr)
+            }
+        }
 
         AST::Operation(l, op, r) => {
             let a = self.evaluate(*l);
@@ -650,18 +658,18 @@ fn evaluate(&mut self, ast: AST) -> i32 {
             }
         }
 
-AST::Index(base, index) => {
-    let idx = self.evaluate(*index) as usize;
-    let arr = self.eval_value(*base);
+        AST::Index(base, index) => {
+            let idx = self.evaluate(*index) as usize;
+            let arr = self.eval_value(*base);
 
-    match arr {
-        Type::ArrayRef(id) => {
-            let elem = self.array_heap[id].get(idx).cloned().unwrap();
-            self.as_int(elem)
+            match arr {
+                Type::ArrayRef(id) => {
+                    let elem = self.array_heap[id].get(idx).cloned().unwrap();
+                    self.as_int(elem)
+                }
+                _ => panic!(),
+            }
         }
-        _ => panic!(),
-    }
-}
 
 
             AST::FieldAccess(base, field) => {
@@ -671,7 +679,7 @@ AST::Index(base, index) => {
                         let v = self.heap[id].fields.get(&field).cloned().unwrap();
                         match v {
                             Type::LazyInteger(ast) => {
-                                if let Type::Integer(n) = self.eval_reactive_field(id, *ast) {
+                                if let Type::Integer(n) = self.eval_reactive_field(*ast) {
                                     n
                                 } else {
                                     unreachable!()
@@ -701,7 +709,7 @@ AST::Index(base, index) => {
             }
         }
     }
-fn eval_reactive_field(&mut self, id: usize, ast: AST) -> Type {
+fn eval_reactive_field(&mut self, ast: AST) -> Type {
     let saved_stack = std::mem::take(&mut self.immutable_stack);
     self.immutable_stack.push(HashMap::new());
     let result = self.eval_value(ast);
@@ -721,6 +729,14 @@ fn eval_value(&mut self, ast: AST) -> Type {
             .cloned()
             .or_else(|| self.environment.get(&name).cloned())
             .unwrap(),
+        AST::Ternary { cond, then_expr, else_expr } => {
+            let c = self.evaluate(*cond);
+            if c != 0 {
+                self.eval_value(*then_expr)
+            } else {
+                self.eval_value(*else_expr)
+            }
+        }
 
         AST::ArrayNew(size_ast) => {
             let n = self.evaluate(*size_ast) as usize;
@@ -735,7 +751,7 @@ fn eval_value(&mut self, ast: AST) -> Type {
                 Type::StructRef(id) => {
                     let v = self.heap[id].fields.get(&field).cloned().unwrap();
                     match v {
-                        Type::LazyInteger(ast) => self.eval_reactive_field(id, *ast),
+                        Type::LazyInteger(ast) => self.eval_reactive_field(*ast),
                         other => other,
                     }
                 }
@@ -807,6 +823,12 @@ AST::Index(base, index) => {
             AST::Operation(l, o, r) => Box::new(AST::Operation(self.freeze_ast(l), o, self.freeze_ast(r))),
             AST::Index(b, i) => Box::new(AST::Index(self.freeze_ast(b), self.freeze_ast(i))),
             AST::FieldAccess(b, f) => Box::new(AST::FieldAccess(self.freeze_ast(b), f)),
+            AST::Ternary { cond, then_expr, else_expr } => Box::new(AST::Ternary {
+                cond: self.freeze_ast(cond),
+                then_expr: self.freeze_ast(then_expr),
+                else_expr: self.freeze_ast(else_expr),
+            }),
+
             other => Box::new(other),
         }
     }
