@@ -282,7 +282,7 @@ Calling a function:
     
 ```haskell
 func f(x) {
-    x = 10;   # error: x is immutable
+    x = 10;   # error: x is immutable #
 }
 ```
 Parameters behave like `:=` bindings.
@@ -295,7 +295,7 @@ Parameters behave like `:=` bindings.
 
 Returned expressions are evaluated **immediately**, not reactively.
 ``` haskell
-`func f(x) {
+func f(x) {
     y ::= x + 1;
     return y;
 }
@@ -304,7 +304,7 @@ a = 10;
 b = f(a);
 a = 20;
 
-println b;  # 11 #` 
+println b;  # 11 #
 ```
 Reactive relationships do **not escape** the function unless explicitly attached to a location outside.
 
