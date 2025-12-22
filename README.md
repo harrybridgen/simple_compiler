@@ -891,8 +891,8 @@ println acct.projected;  # 1443 #
 import std.hashmap;
 
 struct Pair {
-    i = 0;
-    j = 0;
+    p1 = 0;
+    p2 = 0;
 }
 func twosum(arr, target) {
     m := hashmap(arr);
@@ -910,8 +910,8 @@ func twosum(arr, target) {
         want := target - x;
 
         if has(m, want) {
-            p.i = get(m, want);
-            p.j = idx;
+            p.p1 = get(m, want);
+            p.p2 = idx;
             return p;
         }
 
@@ -931,18 +931,18 @@ nums[3] = 15;
 
 result := struct Pair;
 
-result.i ::= twosum(nums, 9).i;
-result.j ::= twosum(nums, 9).j;
+result.p1 ::= twosum(nums, 9).p1;
+result.p2 ::= twosum(nums, 9).p2;
 
-println result.i; # 0 #
-println result.j; # 1 #
+println result.p1; # 0 #
+println result.p2; # 1 #
 
 nums[0] = 12;
 nums[2] = 1;
 nums[3] = 8
 
-println result.i; # 2 #
-println result.j; # 3 #
+println result.p1; # 0 #
+println result.p2; # 1 #
 ```
 
 ### Reactive Fib in a Struct
