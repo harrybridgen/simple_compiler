@@ -1,3 +1,7 @@
+# ------------------------------------------------ #
+# Bouncing String via Reactive Framebuffer         #
+# ------------------------------------------------ #
+
 struct Screen {
     width;
     height;

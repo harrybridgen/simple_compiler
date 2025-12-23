@@ -1,3 +1,7 @@
+# ------------------------------------------------ #
+# 2x2 Reactive Matrix Addition                     #
+# ------------------------------------------------ #
+
 struct Matrix {
     data := [4];
 }
@@ -31,7 +35,6 @@ func add_matrix(a, b) {
 }
 
 func print_matrix(M){
-    # pretty 2x2 matrix print #
     i = 0;
     di ::= i + 1;
 
@@ -42,7 +45,6 @@ func print_matrix(M){
         print M.data[i];
         print ']';
 
-        # newline every 2 elements #
         if (i % 2) == 1 {
             println ' ';
         } else {

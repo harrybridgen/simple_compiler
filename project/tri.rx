@@ -1,7 +1,5 @@
 # ------------------------------------------------ #
 # Pascal / Sierpinski via XOR (2D-ish in 1D)       #
-# Equivalent to Rule 90 but with a different view  #
-# prints row index too                             #
 # ------------------------------------------------ #
 
 width := 63;
