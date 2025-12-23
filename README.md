@@ -83,16 +83,15 @@ If you want to compute a value without mutating a global variable, use `:=`.
 `:=` creates an immutable local binding instead of a mutable location.
 
 ```haskell
-func foo(x) {
+func foo() {
     x := x + 1;
     return x;
 }
 
 x = 1;
-foo();   # return value ignored #
+println foo();   # return value ignored #
 
-println x;  # 1, not 10 #
-
+println x;  # 1, not 2 #
 ```
 Here `x` inside the function is a captured value, not a mutable location
 
