@@ -713,6 +713,7 @@ game/entities/player.hs:
 struct Player {
     x = 0;
     y = 0;
+    xy ::= x + y;
 }
 
 func makeplayer(x, y) {
@@ -728,9 +729,10 @@ main.hs:
 import game.entities.player;
 
 player = makeplayer(10, 5);
-println player.x;
-println player.y;
+
+println player.xy; # 15 #
 ```
+
 ### Standard Library (std)
 
 The standard library is implemented as ordinary source files under the std/ folder.
