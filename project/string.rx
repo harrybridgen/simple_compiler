@@ -101,7 +101,7 @@ func delay(n) {
 }
 
 text := new_text("HELLO REACTIVE");
-screen := new_screen(31,5);
+screen := new_screen(50,8);
 
 framebuffer(screen, text);
 

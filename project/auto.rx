@@ -50,12 +50,10 @@ loop {
 
         ii := i;
 
-        left  ::= ii > 0         ? prev[ii - 1] : 0;
+        left  ::= ii > 0 ? prev[ii - 1] : 0;
         right ::= ii < width - 1 ? prev[ii + 1] : 0;
 
-        next[ii] ::= 
-        ((ii > 0         ? prev[ii - 1] : 0) +
-        (ii < width - 1 ? prev[ii + 1] : 0)) % 2;
+        next[ii] ::= ((ii > 0 ? prev[ii - 1] : 0) + (ii < width - 1 ? prev[ii + 1] : 0)) % 2;
 
 
         i = di;
