@@ -1268,7 +1268,7 @@ println ' ';
 printmatrix(D);
 ```
 
-### Bouncing String with Reactive Constraint-Driven Framebuffer via Structs
+### Bouncing String via a Constraint-Driven Reactive Framebuffer
 ```haskell
 struct Screen {
     width := 31;
