@@ -370,7 +370,8 @@ impl Parser {
                         AST::ReactiveAssignTarget(Box::new(lhs), Box::new(self.parse_ternary()))
                     }
                     Some(Token::ImmutableAssign) => {
-                        panic!("immutable assignment not allowed here")
+                        self.next();
+                        AST::ImmutableAssignTarget(Box::new(lhs), Box::new(self.parse_ternary()))
                     }
                     _ => lhs,
                 }

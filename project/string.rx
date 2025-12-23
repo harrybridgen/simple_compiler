@@ -9,9 +9,6 @@ struct Screen {
 }
 
 struct Text {
-    str;
-    len;
-
     x = 0;
     y = 0;
     vx = 1;
@@ -23,7 +20,7 @@ struct Text {
 
 func new_text(str){
     text := struct Text;
-    text.str = str;
+    text.str := str;
     text.len ::= text.str;
     return text;
 }
