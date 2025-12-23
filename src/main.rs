@@ -1,7 +1,7 @@
 use std::fs;
 
-use reactive_language::compiler::compile;
 use reactive_language::compiler::LabelGenerator;
+use reactive_language::compiler::compile;
 use reactive_language::grammar::Instruction;
 use reactive_language::parser::parse;
 use reactive_language::tokenizer::tokenize;

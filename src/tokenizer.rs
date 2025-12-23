@@ -120,12 +120,14 @@ pub fn tokenize(input: &str) -> Vec<Token> {
             ']' => tokens.push(Token::RSquare),
             ';' => tokens.push(Token::Semicolon),
             '=' => {
-                if let Some('=') = chars.next() {
+                if let Some('=') = chars.peek() {
+                    chars.next();
                     tokens.push(Token::Equal);
                 } else {
                     tokens.push(Token::Assign);
                 }
             }
+
             '+' => tokens.push(Token::Add),
             '*' => tokens.push(Token::Mul),
             '/' => tokens.push(Token::Div),

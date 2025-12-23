@@ -1,0 +1,124 @@
+struct Screen {
+    width := 31;
+    height := 5;
+    buf := [height];
+}
+
+struct Text {
+    text := "HELLO REACTIVE";
+    len  := text;
+
+    x = 0;
+    y = 0;
+
+    vx = 1;
+    vy = 1;
+
+    dx ::= x + vx;
+    dy ::= y + vy;
+}
+func alloc_screen(screen) {
+    y = 0;
+    dy ::= y + 1;
+
+    loop {
+        if y >= screen.height { break; }
+        
+        screen.buf[y] = [screen.width];
+
+        y = dy;
+    }
+}
+
+func framebuffer(screen, text) {
+    y = 0;
+    dy ::= y + 1;
+
+    loop {
+        if y >= screen.height { break; }
+
+        x = 0;
+        dx ::= x + 1;
+
+        loop {
+            if x >= screen.width { break; }
+
+            yy := y;
+            xx := x;
+
+            screen.buf[yy][xx] ::=
+                (yy == text.y &&
+                 xx >= text.x &&
+                 xx < text.x + text.len)
+                    ? text.text[xx - text.x]
+                    : (' ');
+
+            x = dx;
+        }
+
+        y = dy;
+    }
+}
+func render(screen) {
+    print "\033[2J";
+    print "\033[H";
+
+    y = 0;
+    dy ::= y + 1;
+
+    loop {
+        if y >= screen.height { break; }
+        println screen.buf[y];
+        y = dy;
+    }
+}
+func delay(n) {
+    d = 0;
+    dd ::= d + 1;
+
+    loop {
+        if d >= n { break; }
+        d = dd;
+    }
+}
+screen := struct Screen;
+text   := struct Text;
+
+# allocate stable buffers first #
+alloc_screen(screen);
+
+# build reactive dependency graph #
+framebuffer(screen, text);
+
+# main loop: advance time only #
+loop {
+    render(screen);
+    delay(20000);
+
+    text.x = text.dx;
+    text.y = text.dy;
+
+    # horizontal bounce #
+    if text.x < 0 {
+        text.x = -text.x;
+        text.vx = -text.vx;
+    }
+
+    if text.x + text.len > screen.width {
+        text.x = (screen.width - text.len)
+                 - ((text.x + text.len) - screen.width);
+        text.vx = -text.vx;
+    }
+
+    # vertical bounce #
+    if text.y < 0 {
+        text.y = -text.y;
+        text.vy = -text.vy;
+    }
+
+    if text.y > screen.height - 1 {
+        text.y = (screen.height - 1)
+                 - (text.y - (screen.height - 1));
+        text.vy = -text.vy;
+    }
+}

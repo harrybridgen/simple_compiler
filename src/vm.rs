@@ -195,12 +195,26 @@ impl VM {
                         Type::ArrayRef(id) => {
                             let elems = self.array_heap[id].clone();
 
+                            let mut all_chars = true;
+                            let mut chars = Vec::new();
+
                             for elem in elems {
                                 let v = self.load_value(elem);
                                 match v {
-                                    Type::Char(c) => print!("{}", char::from_u32(c).unwrap()),
-                                    _ => panic!("non-char in string"),
+                                    Type::Char(c) => chars.push(c),
+                                    _ => {
+                                        all_chars = false;
+                                        break;
+                                    }
                                 }
+                            }
+
+                            if all_chars {
+                                for c in chars {
+                                    print!("{}", char::from_u32(c).unwrap());
+                                }
+                            } else {
+                                print!("{}", self.array_heap[id].len());
                             }
                         }
 
@@ -222,12 +236,26 @@ impl VM {
                         Type::ArrayRef(id) => {
                             let elems = self.array_heap[id].clone();
 
+                            let mut all_chars = true;
+                            let mut chars = Vec::new();
+
                             for elem in elems {
                                 let v = self.load_value(elem);
                                 match v {
-                                    Type::Char(c) => print!("{}", char::from_u32(c).unwrap()),
-                                    _ => panic!("non-char in string"),
+                                    Type::Char(c) => chars.push(c),
+                                    _ => {
+                                        all_chars = false;
+                                        break;
+                                    }
                                 }
+                            }
+
+                            if all_chars {
+                                for c in chars {
+                                    print!("{}", char::from_u32(c).unwrap());
+                                }
+                            } else {
+                                print!("{}", self.array_heap[id].len());
                             }
                         }
 
@@ -364,7 +392,9 @@ impl VM {
                         Type::StructRef(id) => {
                             let v = self.heap[id].fields.get(&field).cloned().unwrap();
                             let out = match v {
-                                Type::LazyValue(ast) => self.eval_reactive_field(*ast),
+                                Type::LazyValue(ast) => {
+                                    self.eval_reactive_field_in_struct(id, *ast)
+                                }
                                 other => other,
                             };
                             self.stack.push(out);
@@ -591,26 +621,18 @@ impl VM {
         let mut map = HashMap::new();
         let mut imm = HashSet::new();
 
-        for (name, init) in fields {
+        // PASS 1: declare all fields first
+        for (name, init) in &fields {
             match init {
-                None => {
-                    map.insert(name, Type::Integer(0));
-                }
-
-                Some(StructFieldInit::Mutable(ast)) => {
-                    let v = self.eval_value(ast);
-                    map.insert(name, self.clone_value(v));
-                }
-
-                Some(StructFieldInit::Immutable(ast)) => {
-                    let v = self.eval_value(ast);
+                Some(StructFieldInit::Immutable(_)) => {
                     imm.insert(name.clone());
-                    map.insert(name, self.clone_value(v));
+                    map.insert(name.clone(), Type::Integer(0));
                 }
-
-                Some(StructFieldInit::Reactive(ast)) => {
-                    let frozen = self.freeze_ast(Box::new(ast));
-                    map.insert(name, Type::LazyValue(frozen));
+                Some(StructFieldInit::Reactive(_)) => {
+                    map.insert(name.clone(), Type::LazyValue(Box::new(AST::Number(0))));
+                }
+                _ => {
+                    map.insert(name.clone(), Type::Integer(0));
                 }
             }
         }
@@ -618,10 +640,53 @@ impl VM {
         let id = self.heap.len();
         self.heap.push(StructInstance {
             fields: map,
-            immutables: imm,
+            immutables: imm.clone(),
         });
 
+        // PASS 2: evaluate initializers with struct context
+        for (name, init) in fields {
+            if let Some(init) = init {
+                let value = match init {
+                    StructFieldInit::Mutable(ast) | StructFieldInit::Immutable(ast) => {
+                        self.eval_reactive_field_in_struct(id, ast)
+                    }
+                    StructFieldInit::Reactive(ast) => {
+                        Type::LazyValue(self.freeze_ast(Box::new(ast)))
+                    }
+                };
+
+                let stored = match value {
+                    Type::LValue(lv) => self.read_lvalue(lv),
+                    other => other,
+                };
+
+                let cloned = self.clone_value(stored);
+                self.heap[id].fields.insert(name, cloned);
+            }
+        }
+
         Type::StructRef(id)
+    }
+
+    fn eval_reactive_field_in_struct(&mut self, struct_id: usize, ast: AST) -> Type {
+        self.immutable_stack.push(HashMap::new());
+
+        {
+            let scope = self.immutable_stack.last_mut().unwrap();
+            for key in self.heap[struct_id].fields.keys() {
+                scope.insert(
+                    key.clone(),
+                    Type::LValue(LValue::StructField {
+                        struct_id,
+                        field: key.clone(),
+                    }),
+                );
+            }
+        }
+
+        let result = self.eval_value(ast);
+        self.immutable_stack.pop();
+        result
     }
 
     fn clone_value(&mut self, v: Type) -> Type {
@@ -870,8 +935,21 @@ impl VM {
                     _ => Type::Integer(self.evaluate(AST::Operation(l, op, r))),
                 }
             }
+            AST::StringLiteral(s) => {
+                let id = self.array_heap.len();
 
-            _ => panic!(),
+                let mut arr = Vec::with_capacity(s.chars().count());
+                for c in s.chars() {
+                    arr.push(Type::Char(c as u32));
+                }
+
+                self.array_heap.push(arr);
+                Type::ArrayRef(id)
+            }
+
+            other => {
+                panic!("eval_value(): unsupported AST variant: {:?}", other)
+            }
         }
     }
 
@@ -881,17 +959,31 @@ impl VM {
             Type::Char(c) => c as i32,
             Type::LazyValue(ast) => self.evaluate(*ast),
             Type::ArrayRef(id) => self.array_heap[id].len() as i32,
-            Type::StructRef(_) => panic!("cannot coerce struct ref to int"),
-            Type::Function { .. } => panic!("cannot coerce function to int"),
-            Type::LValue(_) => panic!("cannot coerce lvalue to int"),
+            Type::LValue(lv) => {
+                let tmp = self.read_lvalue(lv);
+                self.as_int(tmp)
+            }
+            other => panic!("type error: cannot coerce {:?} to int", other),
         }
     }
 
     fn load_value(&mut self, v: Type) -> Type {
         match v {
             Type::LazyValue(ast) => self.eval_value(*ast),
-            Type::LValue(_) => panic!("cannot load lvalue directly"),
+            Type::LValue(lv) => self.read_lvalue(lv),
             other => other,
+        }
+    }
+    fn read_lvalue(&mut self, lv: LValue) -> Type {
+        match lv {
+            LValue::ArrayElem { array_id, index } => {
+                let v = self.array_heap[array_id][index].clone();
+                self.load_value(v)
+            }
+            LValue::StructField { struct_id, field } => {
+                let v = self.heap[struct_id].fields[&field].clone();
+                self.load_value(v)
+            }
         }
     }
 
