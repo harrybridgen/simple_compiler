@@ -621,7 +621,6 @@ impl VM {
         let mut map = HashMap::new();
         let mut imm = HashSet::new();
 
-        // PASS 1: declare all fields first
         for (name, init) in &fields {
             match init {
                 Some(StructFieldInit::Immutable(_)) => {
@@ -643,7 +642,6 @@ impl VM {
             immutables: imm.clone(),
         });
 
-        // PASS 2: evaluate initializers with struct context
         for (name, init) in fields {
             if let Some(init) = init {
                 let value = match init {

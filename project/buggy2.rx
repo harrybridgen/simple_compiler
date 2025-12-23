@@ -75,7 +75,7 @@ Why this breaks:
 - ::= stores only an AST
 - when re-evaluated, the function scope is gone
 - parameters and locals no longer exist
-- lookup fails → unbound variable / unwrap(None)
+- lookup fails -> unbound variable / unwrap(None)
 
 Why the "A.data[ii] + B.data[ii]" hack works:
 - A and B are globals
