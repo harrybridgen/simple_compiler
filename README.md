@@ -507,11 +507,8 @@ println add(2, 3);  # 5 #
 Calling a function:
 
 1.  Creates a **new immutable scope** for parameters
-    
 2.  Binds arguments to parameter names immutably
-    
 3.  Executes the function body
-    
 4.  Returns a value (or `0` if no return is executed)
     
 ```haskell
@@ -521,11 +518,9 @@ func f(x) {
 ```
 Parameters behave like `:=` bindings.
 
-
-
 ### Return Semantics
 
- Returns are **eager**
+Returns are **eager**
 
 Returned expressions are evaluated **immediately**, not reactively.
 ``` haskell
@@ -567,8 +562,6 @@ println c2.x;  # 10 #
 ```
 This sharing is intentional and allows mutation and reactivity across aliases.
 
-
-
 ### Immutability Does Not Propagate Through Return
 
 Returning an immutable binding yields a **mutable value** to the caller.
@@ -583,63 +576,6 @@ y = 10;   # allowed
 ```
 
 Immutability applies only to the _binding_, not the value.
-
-
-
-### Reactive Use of Functions
-
-Reactive Bindings Require Scalar Results
-
-Reactive assignments (`::=`) operate on **integer-valued expressions only**.
-```haskell
-y ::= abs(x);  # allowed #
-
-player = struct Player;
-y ::= player;  # NOT allowed #
-```
-
-Functions returning integers may be used directly in reactive expressions.
-
-
-
-### Reactive Bindings and Functions Returning Heap Objects
-
-Reactive bindings (::=) may reference expressions that evaluate to heap-allocated values, including structs and arrays returned from functions.
-```haskell
-result ::= twosum(nums, 9); # Returns a pair struct #
-```
-
-This is valid.
-
-Reactive bindings store an expression (AST), not a snapshot.
-When the binding is read, the expression is re-evaluated.
-
-If the expression returns a heap object:
-- the returned object is accessed normally
-- field reads reflect the latest computed result
-
-Reactivity does not track object identity changes.
-Instead, it re-evaluates the expression that produces the object.
-
-
-
-### Reactivity Is Expression-Based, Not Identity-Based
-
-Reactive bindings observe expressions, not object identity.
-
-This means:
-
-the result of a function may change
-
-the heap object returned may change
-
-but reactivity is driven by expression re-evaluation, not pointer tracking
-```haskell
-r ::= makecounter(x);
-```
-
-Each read of r re-evaluates makecounter(x).
-
 
 
 ## Imports and Modules
