@@ -8,12 +8,16 @@ use reactive_language::tokenizer::tokenize;
 use reactive_language::vm::VM;
 
 fn main() {
-    print!("Enter file name (relative to root/project/, .rx optional): ");
+    print!("Enter file name (relative to root/project/, .rx optional, nothing for main): ");
     io::stdout().flush().unwrap();
 
     let mut input_name = String::new();
     io::stdin().read_line(&mut input_name).unwrap();
     let mut name = input_name.trim().to_string();
+
+    if name.is_empty() {
+        name = "main".to_string();
+    }
 
     if !name.ends_with(".rx") {
         name.push_str(".rx");
