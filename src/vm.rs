@@ -1,8 +1,5 @@
 use crate::grammar::{AST, Instruction, LValue, Operator, StructFieldInit, StructInstance, Type};
-use std::{
-    collections::{HashMap, HashSet},
-    hash::Hash,
-};
+use std::collections::{HashMap, HashSet};
 
 pub struct VM {
     stack: Vec<Type>,
@@ -633,7 +630,7 @@ impl VM {
                         }
 
                         (Type::Char(a), Type::Char(b)) => {
-                            self.stack.push(Type::Char((a % b)));
+                            self.stack.push(Type::Char(a % b));
                         }
 
                         (a, b) => {
@@ -1192,7 +1189,6 @@ impl VM {
             .map(|(i, scope)| {
                 let mut keys: Vec<_> = scope.keys().cloned().collect();
                 keys.sort();
-                // label frames so you can see function frames vs injected frames
                 keys.into_iter().map(|k| format!("[{i}] {k}")).collect()
             })
             .collect()
@@ -1222,7 +1218,7 @@ impl VM {
             let mut keys: Vec<_> = scope.keys().cloned().collect();
             keys.sort();
             eprintln!("  frame[{frame_i}] keys={keys:?}");
-            // Uncomment to print values too (can be noisy):
+            // Uncomment to print values too
             // for k in keys { eprintln!("    {k} = {}", self.dbg_short_type(&scope[&k])); }
         }
         eprintln!("heap structs: {}", self.heap.len());
