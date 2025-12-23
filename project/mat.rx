@@ -31,23 +31,42 @@ func add_matrix(a, b) {
 }
 
 func print_matrix(M){
+    # pretty 2x2 matrix print #
     i = 0;
     di ::= i + 1;
 
     loop {
         if i >= 4 { break; }
-        println M.data[i];
+
+        print '[';
+        print M.data[i];
+        print ']';
+
+        # newline every 2 elements #
+        if (i % 2) == 1 {
+            println ' ';
+        } else {
+            print ' ';
+        }
+
         i = di;
     }
 }
+
 
 # ================= DEMO ================= #
 
 A = build_matrix();
 B = build_matrix();
 C ::= add_matrix(A, B);
+
+print_matrix(A);
+println "+";
+print_matrix(B);
+println "=";
 print_matrix(C);
 
+println "Mutate A"
 A.data[0] = 10;
 
 print_matrix(C);
