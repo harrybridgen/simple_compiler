@@ -623,7 +623,7 @@ counter.x = 20;
 println counter.x; # PRINTS 10, NOT 20 #
 ```
 
-Each read of counter re-evaluates buildcounter(10).
+Each read of counter re-evaluates buildcounter(10) and discards any previous result.
 
 If you wanted to make counter NOT revaluate, use the `:=` immutable binding:
 
@@ -644,7 +644,7 @@ counter.x = 20;
 println counter.x; # PRINTS 20 #
 ```
 
-Reactive Struct Fields vs Reactive Struct Values
+### Reactive Struct Fields vs Reactive Struct-Producing Expressions
 
 You may bind:
 - reactive fields inside structs
