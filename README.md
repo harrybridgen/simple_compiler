@@ -577,6 +577,95 @@ y = 10;   # allowed
 
 Immutability applies only to the _binding_, not the value.
 
+### Reactive Bindings and Functions Returning Heap Objects
+Reactive bindings (::=) may reference expressions that evaluate to heap-allocated values, including structs and arrays returned from functions.
+```haskell
+result ::= twosum(nums, 9); # returns pair struct #
+println result.x;
+```
+
+This is valid.
+
+Reactive bindings store an expression (AST), not a snapshot.
+When the binding is read, the expression is re-evaluated.
+
+If the expression returns a heap object:
+- the returned object is accessed normally
+- field reads reflect the latest computed result
+- mutations to dependencies trigger recomputation
+
+Reactivity does not track object identity changes.
+Instead, it re-evaluates the expression that produces the object.
+
+### Reactivity Is Expression-Based, Not Identity-Based
+
+Reactive bindings observe expressions, not object identity.
+
+This means:
+- the result of a function may change
+- the heap object returned may change
+- but reactivity is driven by expression re-evaluation, not pointer tracking
+
+```haskell
+struct Counter {
+    x = 1;
+    step = 1;
+}
+
+func buildcounter(start) {
+    c := struct Counter;
+    c.x = start;
+    return c;
+}
+
+counter ::= buildcounter(10);
+counter.x = 20;
+println counter.x; # PRINTS 10, NOT 20 #
+```
+
+Each read of counter re-evaluates buildcounter(10).
+
+If you wanted to make counter NOT revaluate, use the `:=` immutable binding:
+
+```haskell
+struct Counter {
+    x = 1;
+    step = 1;
+}
+
+func buildcounter(start) {
+    c := struct Counter;
+    c.x = start;
+    return c;
+}
+
+counter := buildcounter(10); # swapped ::= for := #
+counter.x = 20;
+println counter.x; # PRINTS 20 #
+```
+
+Reactive Struct Fields vs Reactive Struct Values
+
+You may bind:
+- reactive fields inside structs
+- reactive expressions that return structs
+- Both are valid and supported.
+
+Recommended patterns:
+```haskell
+# Reactive field binding #
+counter := struct Counter;
+counter.next ::= counter.x + 1;
+
+# Reactive expression returning a struct
+result ::= twosum(nums, 9);
+println result.p1;
+```
+
+Reactive fields attach to heap locations.
+Reactive expressions attach to evaluation context.
+
+Both coexist cleanly in the language.
 
 ## Imports and Modules
 
