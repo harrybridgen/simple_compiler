@@ -201,6 +201,12 @@ pub fn compile(
             compile(*e, code, labels, break_stack);
             code.push(Instruction::Println);
         }
+
+        AST::ImmutableAssignTarget(target, value) => {
+            compile_lvalue(*target, code, labels, break_stack);
+            compile(*value, code, labels, break_stack);
+            code.push(Instruction::StoreThroughImmutable);
+        }
     }
 }
 

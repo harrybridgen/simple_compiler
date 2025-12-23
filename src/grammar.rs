@@ -121,6 +121,7 @@ pub enum AST {
     Assign(String, Box<AST>),
     ImmutableAssign(String, Box<AST>),
     ReactiveAssign(String, Box<AST>),
+    ImmutableAssignTarget(Box<AST>, Box<AST>),
 
     // assignment (lvalue-level)
     AssignTarget(Box<AST>, Box<AST>),
@@ -264,6 +265,7 @@ pub enum Instruction {
     // indirect stores
     StoreThrough,
     StoreThroughReactive(Box<AST>),
+    StoreThroughImmutable,
 
     // functions
     StoreFunction(String, Vec<String>, Vec<AST>),

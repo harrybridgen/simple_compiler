@@ -65,9 +65,7 @@ impl VM {
 
             match instr {
                 Instruction::Push(n) => self.stack.push(Type::Integer(n)),
-
                 Instruction::PushChar(c) => self.stack.push(Type::Char(c)),
-
                 Instruction::Load(name) => {
                     let v = self
                         .find_immutable(&name)
@@ -78,13 +76,11 @@ impl VM {
                     let value = self.force(v);
                     self.stack.push(value);
                 }
-
                 Instruction::Store(name) => {
                     self.ensure_mutable_binding(&name);
                     let v = self.pop();
                     self.environment.insert(name, v);
                 }
-
                 Instruction::StoreImmutable(name) => {
                     let v = self.pop();
                     let scope = self
@@ -96,7 +92,6 @@ impl VM {
                     }
                     scope.insert(name, v);
                 }
-
                 Instruction::StoreReactive(name, ast) => {
                     self.ensure_mutable_binding(&name);
                     let frozen = self.freeze_ast(ast);
@@ -104,7 +99,6 @@ impl VM {
                     self.environment
                         .insert(name, Type::LazyValue(frozen, captured));
                 }
-
                 Instruction::Import(path) => {
                     let module_name = path.join(".");
                     if !self.imported_modules.contains(&module_name) {
@@ -119,14 +113,12 @@ impl VM {
                 Instruction::Mul => self.exec_mul(),
                 Instruction::Div => self.exec_div(),
                 Instruction::Modulo => self.exec_modulo(),
-
                 Instruction::Greater => self.exec_cmp(|b, a| (b > a) as i32),
                 Instruction::Less => self.exec_cmp(|b, a| (b < a) as i32),
                 Instruction::Equal => self.exec_cmp(|b, a| (b == a) as i32),
                 Instruction::NotEqual => self.exec_cmp(|b, a| (b != a) as i32),
                 Instruction::GreaterEqual => self.exec_cmp(|b, a| (b >= a) as i32),
                 Instruction::LessEqual => self.exec_cmp(|b, a| (b <= a) as i32),
-
                 Instruction::And => self.exec_cmp(|b, a| ((b > 0) && (a > 0)) as i32),
                 Instruction::Or => self.exec_cmp(|b, a| ((b > 0) || (a > 0)) as i32),
 
@@ -149,7 +141,6 @@ impl VM {
                     self.array_heap.push(vec![Type::Integer(0); n]);
                     self.stack.push(Type::ArrayRef(id));
                 }
-
                 Instruction::ArrayGet => {
                     // pop index
                     let idx_val = self.pop();
@@ -175,7 +166,6 @@ impl VM {
                         }
                     }
                 }
-
                 Instruction::StoreIndex(name) => {
                     self.ensure_mutable_binding(&name);
 
@@ -203,7 +193,6 @@ impl VM {
                         other => panic!("type error: StoreIndex on non-array {:?}", other),
                     }
                 }
-
                 Instruction::StoreIndexReactive(name, ast) => {
                     self.ensure_mutable_binding(&name);
 
@@ -240,7 +229,6 @@ impl VM {
                     self.environment
                         .insert(name, Type::Function { params, body });
                 }
-
                 Instruction::Call(name, argc) => {
                     let args = self.pop_args(argc);
 
@@ -267,7 +255,6 @@ impl VM {
                 Instruction::StoreStruct(name, fields) => {
                     self.struct_defs.insert(name, fields);
                 }
-
                 Instruction::NewStruct(name) => {
                     let def = self
                         .struct_defs
@@ -277,7 +264,6 @@ impl VM {
                     let inst = self.instantiate_struct(def);
                     self.stack.push(inst);
                 }
-
                 Instruction::FieldGet(field) => {
                     let obj = self.pop();
                     match self.force(obj) {
@@ -297,7 +283,6 @@ impl VM {
                         other => panic!("type error: FieldGet on non-struct {:?}", other),
                     }
                 }
-
                 Instruction::FieldSet(field) => {
                     let val = self.pop();
                     let obj = self.pop();
@@ -314,7 +299,6 @@ impl VM {
                         other => panic!("type error: FieldSet on non-struct {:?}", other),
                     }
                 }
-
                 Instruction::FieldSetReactive(field, ast) => {
                     let obj = self.pop();
 
@@ -337,24 +321,19 @@ impl VM {
                 Instruction::PushImmutableContext => {
                     self.immutable_stack.push(HashMap::new());
                 }
-
                 Instruction::PopImmutableContext => {
                     if self.immutable_stack.len() <= 1 {
                         panic!("internal error: cannot pop the root immutable context");
                     }
                     self.immutable_stack.pop();
                 }
-
                 Instruction::ClearImmutableContext => {
                     self.immutable_stack
                         .last_mut()
                         .expect("internal error: no immutable scope")
                         .clear();
                 }
-
-                // ----- Control flow -----
                 Instruction::Label(_) => {}
-
                 Instruction::Jump(l) => {
                     self.pointer = *self
                         .labels
@@ -362,7 +341,6 @@ impl VM {
                         .unwrap_or_else(|| panic!("unknown label `{l}`"));
                     continue;
                 }
-
                 Instruction::JumpIfZero(l) => {
                     let val = self.pop();
                     let n = self.as_int(val);
@@ -374,7 +352,6 @@ impl VM {
                         continue;
                     }
                 }
-
                 Instruction::Return => {
                     return;
                 }
@@ -384,6 +361,27 @@ impl VM {
                 Instruction::FieldLValue(field) => self.exec_field_lvalue(field),
                 Instruction::StoreThrough => self.exec_store_through(),
                 Instruction::StoreThroughReactive(ast) => self.exec_store_through_reactive(ast),
+                Instruction::StoreThroughImmutable => {
+                    let value = self.pop();
+                    let target = self.pop();
+
+                    let stored = self.force_to_storable(value);
+
+                    match target {
+                        Type::LValue(LValue::StructField { struct_id, field }) => {
+                            let inst = &mut self.heap[struct_id];
+
+                            if inst.fields.contains_key(&field) {
+                                panic!("cannot reassign immutable field `{}`", field);
+                            }
+
+                            inst.fields.insert(field.clone(), stored);
+                            inst.immutables.insert(field);
+                        }
+
+                        _ => panic!("immutable assignment only allowed on struct fields"),
+                    }
+                }
             }
 
             self.pointer += 1;
@@ -557,12 +555,14 @@ impl VM {
             }
 
             Type::LValue(LValue::StructField { struct_id, field }) => {
-                if self.heap[struct_id].immutables.contains(&field) {
-                    panic!("cannot assign to immutable field `{}`", field);
+                let inst = &mut self.heap[struct_id];
+
+                if inst.immutables.contains(&field) {
+                    panic!("cannot reassign immutable field `{}`", field);
                 }
-                self.heap[struct_id]
-                    .fields
-                    .insert(field, Type::LazyValue(frozen, captured));
+
+                inst.immutables.insert(field.clone());
+                inst.fields.insert(field, Type::LazyValue(frozen, captured));
             }
 
             other => panic!(
