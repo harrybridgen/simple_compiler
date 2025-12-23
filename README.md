@@ -89,7 +89,7 @@ func foo() {
 }
 
 x = 1;
-println foo();   # return value ignored #
+println foo();   # 2 #
 
 println x;  # 1, not 2 #
 ```
