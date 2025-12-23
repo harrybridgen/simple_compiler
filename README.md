@@ -1271,24 +1271,37 @@ printmatrix(D);
 ### Bouncing String via a Constraint-Driven Reactive Framebuffer
 ```haskell
 struct Screen {
-    width := 31;
-    height := 5;
-    buf := [height];
+    width;
+    height;
+    buf;
 }
 
 struct Text {
-    str := "HELLO REACTIVE";
-    len  := str;
+    str;
+    len;
+    
     x = 0;
     y = 0;
-
     vx = 1;
     vy = 1;
 
     dx ::= x + vx;
     dy ::= y + vy;
 }
-func alloc_screen() {
+
+func make_text(str){
+    text := struct Text;
+    text.str = str;
+    text.len ::= text.str;
+    return text;
+}
+
+func make_screen(width, height) {
+    screen := struct Screen;
+    screen.width = width;
+    screen.height = height;
+    screen.buf = [screen.height];
+
     y = 0;
     dy ::= y + 1;
 
@@ -1299,9 +1312,11 @@ func alloc_screen() {
 
         y = dy;
     }
+    return screen;
 }
 
-func framebuffer() {
+func framebuffer(screen, text) {
+    
     y = 0;
     dy ::= y + 1;
 
@@ -1352,12 +1367,11 @@ func delay(n) {
         d = dd;
     }
 }
-screen := struct Screen;
-text := struct Text;
 
-alloc_screen();
+text := make_text("HELLO REACTIVE");
+screen := make_screen(31,5);
 
-framebuffer();
+framebuffer(screen, text);
 
 loop {
     render();
