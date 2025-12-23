@@ -1041,10 +1041,7 @@ nums[1] = 7;
 nums[2] = 11;
 nums[3] = 15;
 
-result := struct Pair;
-
-result.p1 ::= twosum(nums, 9).p1;
-result.p2 ::= twosum(nums, 9).p2;
+result ::= twosum(nums, 9);
 
 println result.p1; # 0 #
 println result.p2; # 1 #
