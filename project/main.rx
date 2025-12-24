@@ -4,10 +4,10 @@ struct Player {
     xy ::= x + y;
 }
 
-func makeplayer(x, y) {
+func makeplayer(nx, ny) {
     p := struct Player;
-    p.x = x;
-    p.y = y;
+    p.x = nx;
+    p.y = ny;
     return p;
 }
 

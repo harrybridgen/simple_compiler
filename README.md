@@ -46,7 +46,7 @@ The language has **three assignment forms**, each with a distinct meaning.
 Mutable variables created with `=` are local to the current function invocation, unless they refer to an existing global or heap location.
 
 ```haskell
-func  main(){
+func main(){
     x = 10;
     println x; # 10 #
 }
@@ -72,11 +72,11 @@ Inside structs, `=` creates a per-instance mutable field.
 Each struct instance owns its own copy of the field.
 
 ```haskell
-struct  A {
+struct A {
     x = 0;
 }
 
-func  main(){
+func main(){
     a = struct A;
     b = struct A;
 
@@ -164,13 +164,13 @@ struct  Counter {
     step = 1;
 }
 
-func  main(){
+func main(){
     c = struct  Counter;
     c.next ::= c.x + c.step;
 
-    println  c.next; # 2 #
-    c.x  =  c.next;
-    println  c.next; # 3 #
+    println c.next; # 2 #
+    c.x = c.next;
+    println c.next; # 3 #
 }
 ```
 
@@ -238,9 +238,9 @@ func main(){
     i = 0;
 
     loop {
-        arr[i] ::=  i  *  10;
-        i  =  i  +  1;
-        if  i  >=  3 { break; }
+        arr[i] ::= i * 10;
+        i = i + 1;
+        if i >=  3 { break; }
     }
 
     println  arr[0];
