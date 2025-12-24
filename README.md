@@ -1502,16 +1502,16 @@ struct Text {
 
 func make_text(str){
     text := struct Text;
-    text.str = str;
+    text.str := str;
     text.len ::= text.str;
     return text;
 }
 
 func make_screen(width, height) {
     screen := struct Screen;
-    screen.width = width;
-    screen.height = height;
-    screen.buf = [screen.height];
+    screen.width := width;
+    screen.height := height;
+    screen.buf := [screen.height];
 
     y = 0;
     dy ::= y + 1;
