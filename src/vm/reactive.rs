@@ -1,5 +1,5 @@
 use super::VM;
-use crate::grammar::{AST, Operator, Type};
+use crate::grammar::{AST, LValue, Operator, Type};
 use std::collections::{HashMap, HashSet};
 
 impl VM {
@@ -19,10 +19,25 @@ impl VM {
                 self.immutable_stack.pop();
                 self.force(out)
             }
-            Type::LValue(lv) => {
-                let val = self.read_lvalue(lv);
-                self.force(val)
-            }
+
+            Type::LValue(lv) => match lv {
+                LValue::StructField { struct_id, field } => {
+                    // IMPORTANT: struct reactive fields must be forced with struct-local bindings
+                    let val = self.heap[struct_id]
+                        .fields
+                        .get(&field)
+                        .cloned()
+                        .unwrap_or_else(|| panic!("missing struct field `{}`", field));
+
+                    self.force_struct_field(struct_id, val)
+                }
+
+                LValue::ArrayElem { array_id, index } => {
+                    let val = self.read_lvalue(LValue::ArrayElem { array_id, index });
+                    self.force(val)
+                }
+            },
+
             other => other,
         }
     }

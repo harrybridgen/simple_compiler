@@ -1,18 +1,52 @@
-struct Player {
-    x = 0;
-    y = 0;
-    xy ::= x + y;
-}
+import std.vector2;
 
-func makeplayer(x, y) {
-    p := struct Player;
-    p.x = x;
-    p.y = y;
-    return p;
-}
+func main() {
+    # create two vectors #
+    a := vec2(3, 4);
+    b := vec2full(1, 2, 1, -1);
 
-func main(){
-    player := makeplayer(10, 5);
-    player.x = 5;
-    println player.xy; # 10 #
+    # basic fields #
+    println a.x;    # 3 #
+    println a.y;    # 4 #
+
+    # reactive magnitude #
+    println a.mag2; # 25 #
+    println a.mag;  # 5 #
+
+    # velocity + reactive next position #
+    println b.dx;   # 2 #
+    println b.dy;   # 1 #
+
+    update(b);
+    println b.x;    # 2 #
+    println b.y;    # 1 #
+
+    # vector arithmetic #
+    c := add(a, b);
+    println c.x;    # 5 #
+    println c.y;    # 5 #
+
+    d := sub(a, b);
+    println d.x;    # 1 #
+    println d.y;    # 3 #
+
+    e := scale(a, 2);
+    println e.x;    # 6 #
+    println e.y;    # 8 #
+
+    # distance #
+    println distance2(a, b); # (3-2)^2 + (4-1)^2 = 10 #
+    println distance(a, b);  # 3 #
+
+    # velocity mutation #
+    setvelocity(a, 1, 1);
+    update(a);
+    println a.x;    # 4 #
+    println a.y;    # 5 #
+
+    # zeroing #
+    zero(a);
+    println a.x;    # 0 #
+    println a.y;    # 0 #
+    println a.mag;  # 0 #
 }
