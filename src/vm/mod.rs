@@ -30,6 +30,7 @@ pub struct VM {
     struct_defs: HashMap<String, Vec<(String, Option<StructFieldInit>)>>,
     heap: Vec<StructInstance>,
     array_heap: Vec<Vec<Type>>,
+    array_immutables: Vec<HashSet<usize>>,
 
     // Module import memoization
     imported_modules: HashSet<String>,
@@ -53,6 +54,7 @@ impl VM {
             struct_defs: HashMap::new(),
             heap: Vec::new(),
             array_heap: Vec::new(),
+            array_immutables: Vec::new(),
             imported_modules: HashSet::new(),
             debug: true,
             debug_reactive_ctx: Vec::new(),

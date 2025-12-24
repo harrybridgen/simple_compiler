@@ -271,7 +271,7 @@ arr[2] = 20
 Why?
 Because `::=` doesn’t store a value it stores “whatever `i` is later”.
 
-So, you need to use the `:=` imutable bind to "capture" the value of `i`
+So, you need to use the `:=` immutable bind to "capture" the value of `i`
 
 ```lua
 func main(){

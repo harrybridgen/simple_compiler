@@ -100,6 +100,7 @@ impl VM {
 
         let id = self.array_heap.len();
         self.array_heap.push(vec![Type::Integer(0); n]);
+        self.array_immutables.push(HashSet::new());
         self.stack.push(Type::ArrayRef(id));
     }
 
@@ -299,10 +300,15 @@ impl VM {
 
         match target {
             Type::LValue(LValue::ArrayElem { array_id, index }) => {
+                if self.array_immutables[array_id].contains(&index) {
+                    panic!("cannot reassign immutable array element");
+                }
+
                 let len = self.array_heap[array_id].len();
                 if index >= len {
-                    panic!("array assignment out of bounds: index {index}, length {len}");
+                    panic!("array assignment out of bounds");
                 }
+
                 self.array_heap[array_id][index] = stored;
             }
 
@@ -335,10 +341,15 @@ impl VM {
 
         match target {
             Type::LValue(LValue::ArrayElem { array_id, index }) => {
+                if self.array_immutables[array_id].contains(&index) {
+                    panic!("cannot reassign immutable array element");
+                }
+
                 let len = self.array_heap[array_id].len();
                 if index >= len {
-                    panic!("reactive array assignment out of bounds: index {index}, length {len}");
+                    panic!("reactive array assignment out of bounds");
                 }
+
                 self.array_heap[array_id][index] = Type::LazyValue(frozen, captured);
             }
 
@@ -367,7 +378,6 @@ impl VM {
     pub(crate) fn store_through_immutable(&mut self) {
         let value = self.pop();
         let target = self.pop();
-
         let stored = self.force_to_storable(value);
 
         match target {
@@ -384,7 +394,18 @@ impl VM {
                 inst.immutables.insert(field);
             }
 
-            _ => panic!("immutable assignment only allowed on struct fields"),
+            Type::LValue(LValue::ArrayElem { array_id, index }) => {
+                let imm = &mut self.array_immutables[array_id];
+
+                if imm.contains(&index) {
+                    panic!("cannot reassign immutable array element");
+                }
+
+                self.array_heap[array_id][index] = stored;
+                imm.insert(index);
+            }
+
+            _ => panic!("immutable assignment only allowed on lvalues"),
         }
     }
 
@@ -476,7 +497,7 @@ impl VM {
                     map.insert(name.clone(), Type::Uninitialized);
                 }
                 Some(StructFieldInit::Reactive(_)) => {
-                    // reactive initializer stored later; slot exists now
+                    // reactive initializer stored later, slot exists now
                     map.insert(
                         name.clone(),
                         Type::LazyValue(Box::new(AST::Number(0)), HashMap::new()),
@@ -487,7 +508,7 @@ impl VM {
                     map.insert(name.clone(), Type::Uninitialized);
                 }
                 None => {
-                    // bare `x;` starts uninitialized, so `x := ...` can be a one-time init
+                    // bare x starts uninitialized, so x := ... can be a one-time init
                     map.insert(name.clone(), Type::Uninitialized);
                 }
             }
@@ -499,7 +520,7 @@ impl VM {
             immutables: imm.clone(),
         });
 
-        // Apply initializers (mutable/immutable are eager; reactive stores relationship)
+        // Apply initializers (mutable/immutable are eager, reactive stores relationship)
         for (name, init) in fields {
             if let Some(init) = init {
                 let value = match init {
@@ -552,8 +573,11 @@ impl VM {
             Type::ArrayRef(id) => {
                 let new_id = self.array_heap.len();
                 self.array_heap.push(self.array_heap[id].clone());
+                self.array_immutables
+                    .push(self.array_immutables[id].clone());
                 Type::ArrayRef(new_id)
             }
+
             Type::StructRef(id) => {
                 let inst = self.heap[id].clone();
                 let new_id = self.heap.len();

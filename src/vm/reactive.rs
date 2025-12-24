@@ -83,6 +83,7 @@ impl VM {
                 let n = self.as_usize_nonneg(value, "array size");
                 let id = self.array_heap.len();
                 self.array_heap.push(vec![Type::Integer(0); n]);
+                self.array_immutables.push(HashSet::new());
                 Type::ArrayRef(id)
             }
 
@@ -242,7 +243,7 @@ impl VM {
         cap
     }
 
-    /// Freeze immutables that are integers by replacing Var(x) with Number(n) when `x`
+    /// Freeze immutables that are integers by replacing Var(x) with Number(n) when x
     /// resolves to an immutable integer in the current immutable stack.
     pub(crate) fn freeze_ast(&self, ast: Box<AST>) -> Box<AST> {
         match *ast {
