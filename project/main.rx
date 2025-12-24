@@ -1,52 +1,141 @@
+import std.maths;
+import std.hashmap;
+import std.queue;
+import std.stack;
 import std.vector2;
 
 func main() {
-    # create two vectors #
-    a := vec2(3, 4);
-    b := vec2full(1, 2, 1, -1);
 
-    # basic fields #
-    println a.x;    # 3 #
-    println a.y;    # 4 #
+    # -------------------------------
+     maths
+     -------------------------------#
+     println "=============="
+    println "MATHS STD TEST"
+    a := abs(-5);
 
-    # reactive magnitude #
-    println a.mag2; # 25 #
-    println a.mag;  # 5 #
+    b := clamp(20, 0, 10);
+    c := square(4);
+    d := cube(3);
+    e := min(7, 2);
+    f := max(7, 2);
+    g := sign(-10);
 
-    # velocity + reactive next position #
-    println b.dx;   # 2 #
-    println b.dy;   # 1 #
+    h := iseven(8);
 
-    update(b);
-    println b.x;    # 2 #
-    println b.y;    # 1 #
+    i := isodd(9);
+    println "here";
+    j := mod(-13, 5);
+    println "here";
+    k = sqrt(81);
+    println "here";
+    println a;  # 5 #
+    println b;  # 10 #
+    println c;  # 16 #
+    println d;  # 27 #
+    println e;  # 2 #
+    println f;  # 7 #
+    println g;  # -1 #
+    println h;  # 1 #
+    println i;  # 1 #
+    println j;  # 3 #
+    println k;  # 9 #
 
-    # vector arithmetic #
-    c := add(a, b);
-    println c.x;    # 5 #
-    println c.y;    # 5 #
+    # -------------------------------
+     vector2
+    -------------------------------#
+    println "=============="
+    println "VEC2 STD TEST"
+    v := vec2full(3, 4, 1, -2);
 
-    d := sub(a, b);
-    println d.x;    # 1 #
-    println d.y;    # 3 #
+    println v.mag2;  # 25 #
+    println v.mag;   # 5 #
 
-    e := scale(a, 2);
-    println e.x;    # 6 #
-    println e.y;    # 8 #
+    update(v);
+    println v.x;     # 4 #
+    println v.y;     # 2 #
 
-    # distance #
-    println distance2(a, b); # (3-2)^2 + (4-1)^2 = 10 #
-    println distance(a, b);  # 3 #
+    addvelocity(v, 2, 3);
+    update(v);
+    println v.x;     # 7 #
+    println v.y;     # 3 #
 
-    # velocity mutation #
-    setvelocity(a, 1, 1);
-    update(a);
-    println a.x;    # 4 #
-    println a.y;    # 5 #
+    w := vec2(1, 1);
+    u := add(v, w);
 
-    # zeroing #
-    zero(a);
-    println a.x;    # 0 #
-    println a.y;    # 0 #
-    println a.mag;  # 0 #
+    println u.x;
+    println u.y;
+
+    println distance(v, w);
+    println distance2(v, w);
+
+    zero(w);
+    println w.mag;   # 0 #
+
+    # -------------------------------
+     stack
+     -------------------------------#
+         println "=============="
+    println "STACK STD TEST"
+    s := stack(5);
+
+    push(s, 10);
+    push(s, 20);
+    push(s, 30);
+
+    println s.size;   # 3 #
+    println top(s);   # 30 #
+
+    println pop(s);   # 30 #
+    println pop(s);   # 20 #
+    println pop(s);   # 10 #
+    println pop(s);   # 0 #
+
+    println s.empty;  # 1 #
+
+    # -------------------------------
+     queue
+     -------------------------------#
+         println "=============="
+    println "QUEUE STD TEST"
+    q := queue(4);
+
+    enqueue(q, 1);
+    enqueue(q, 2);
+    enqueue(q, 3);
+
+    println q.size;    # 3 #
+    println peek(q);   # 1 #
+
+    println dequeue(q); # 1 #
+    println dequeue(q); # 2 #
+    println dequeue(q); # 3 #
+    println dequeue(q); # 0 #
+
+    println q.empty;   # 1 #
+
+    # -------------------------------
+     hashmap
+     -------------------------------#
+         println "=============="
+    println "HASH STD TEST"
+    m := hashmap(8);
+
+    put(m, 10, 100);
+    put(m, 20, 200);
+    put(m, 30, 300);
+
+    println get(m, 10);  # 100 #
+    println get(m, 20);  # 200 #
+    println get(m, 30);  # 300 #
+    println get(m, 99);  # 0 #
+
+    put(m, 20, 999);
+    println get(m, 20);  # 999 #
+
+    println has(m, 30);  # 1 #
+    println has(m, 42);  # 0 #
+
+    remove(m, 10);
+    println has(m, 10);  # 0 #
+    println m.size;      # 2 #
 }

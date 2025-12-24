@@ -35,9 +35,10 @@ impl VM {
             Type::Function { params, body } => {
                 // Save VM state
                 let saved_local = self.local_env.take();
-                let saved_immutables = self.immutable_stack.clone();
+                let saved_immutables = std::mem::take(&mut self.immutable_stack);
 
-                // New call frame
+                // New call frame: fresh immutable stack + param frame
+                self.immutable_stack = vec![HashMap::new()];
                 self.immutable_stack.push(HashMap::new());
                 self.local_env = Some(HashMap::new());
 

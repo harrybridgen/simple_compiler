@@ -17,6 +17,14 @@ impl VM {
     }
 
     pub(crate) fn ensure_mutable_binding(&self, name: &str) {
+        // If we are inside a function (local_env exists),
+        // then assignments create / modify locals and must NOT
+        // be blocked by outer immutable bindings.
+        if self.local_env.is_some() {
+            return;
+        }
+
+        // Only block mutation when assigning in the global scope
         if self.immutable_exists(name) {
             panic!("cannot assign to immutable variable `{name}`");
         }
