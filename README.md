@@ -164,6 +164,7 @@ Reactive assignments work uniformly for **variables, struct fields, array elemem
 struct Counter {
     x = 1;
     step = 1;
+    next;
 }
 
 func main(){
@@ -483,11 +484,13 @@ func main(){
 
 ### Reactive Field Capture and Globals
 
-Reactive fields `::=` capture free variables from the surrounding environment at the point the relationship is defined, not when it is evaluated.
+Reactive fields defined with `::=` do not capture free variables from the surrounding environment at definition time. Instead, reactive fields inside structs are evaluated entirely in the context of the struct instance.
 
-This means that a reactive field inside a struct may capture global immutable bindings if a name is visible at definition time.
+Names referenced inside a reactive struct field always resolve to struct fields first, even if a global immutable with the same name exists.
 
-```lua
+For example:
+
+```haskell
 x := 10;
 
 struct Example {
@@ -500,19 +503,31 @@ func main(){
     e = struct Example;
     e.y = 1;
     e.x = 1;
-    println e.sum;  # 11 #
+    println e.sum; # 2 #
 }
 ```
 
-In the example above, sum captures the global immutable `x` when the struct is defined.
-Even though the struct also declares a field named `x`, that field does not participate in reactive capture.
+In this example, sum evaluates to 2, not 11.
 
-At evaluation time:
+Although a global immutable `x := 10` exists, it does not participate in the reactive evaluation of sum. The identifier `x` inside `sum ::= x + y` resolves to the struct field `e.x`, and `y` resolves to the struct field `e.y`.
 
-- `y` resolves to the struct field `e.y`
-- `x` resolves to the captured global immutable `x := 10`
+If you wanted to use a global immutable within a struct reactive assignment, you could do the following:
 
-As a result, `sum` evaluates to `10 + 1`.
+```haskell
+x := 10;
+
+struct Example {
+    y;
+    xx := x;
+    sum ::= xx + y;
+}
+
+func main(){
+    e = struct Example;
+    e.y = 1;
+    println e.sum;  # 11 #
+}
+```
 
 ## Arrays
 

@@ -507,9 +507,8 @@ impl VM {
                         self.eval_reactive_field_in_struct(id, ast)
                     }
                     StructFieldInit::Reactive(ast) => {
-                        let frozen = self.freeze_ast(Box::new(ast));
-                        let captured = self.capture_immutables_for_ast(&frozen);
-                        Type::LazyValue(frozen, captured)
+                        let frozen = Box::new(ast);
+                        Type::LazyValue(frozen, HashMap::new())
                     }
                 };
 

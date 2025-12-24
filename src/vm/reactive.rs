@@ -242,7 +242,7 @@ impl VM {
         cap
     }
 
-    /// Freeze immutables that are integers by replacing Var(x) with Number(n) when x
+    /// Freeze immutables that are integers by replacing Var(x) with Number(n) when `x`
     /// resolves to an immutable integer in the current immutable stack.
     pub(crate) fn freeze_ast(&self, ast: Box<AST>) -> Box<AST> {
         match *ast {
