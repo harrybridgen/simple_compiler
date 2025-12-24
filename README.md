@@ -125,7 +125,7 @@ func main(){
 
     println  y; # 2 #
 
-    x  =  y;
+    x = y;
 
     print  y; # 3 #
 }
@@ -144,13 +144,15 @@ This of this as "advancing" the relation. In this case, it adds `1` onto `y`.
 They are commonly used to build **progression variables** in loops:
 
 ```lua
-x = 0;
-dx ::= x + 1;
+func main(){
+    x = 0;
+    dx ::= x + 1;
 
-loop {
-    println x;
-    if x >= 4 { break; }
-    x = dx;
+    loop {
+        println x;
+        if x >= 4 { break; }
+        x = dx;
+    }
 }
 ```
 
