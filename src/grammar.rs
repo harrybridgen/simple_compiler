@@ -94,7 +94,11 @@ pub struct StructInstance {
 //
 // ----------------------------- AST -----------------------------
 //
-
+#[derive(Debug, Clone)]
+pub enum CastType {
+    Int,
+    Char,
+}
 #[derive(Debug, Clone)]
 pub enum AST {
     // literals
@@ -147,6 +151,10 @@ pub enum AST {
     Call {
         name: String,
         args: Vec<AST>,
+    },
+    Cast {
+        target: CastType,
+        expr: Box<AST>,
     },
 
     // structs
@@ -282,4 +290,7 @@ pub enum Instruction {
 
     // modules
     Import(Vec<String>),
+
+    //casts
+    Cast(CastType),
 }

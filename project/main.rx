@@ -1,4 +1,3 @@
-import std.maths;
 func main() {
-    println !(iseven(2) && iseven(3)) || iseven(10);
+    println 3;
 }

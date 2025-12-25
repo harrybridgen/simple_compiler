@@ -230,6 +230,10 @@ pub fn compile(
             compile(*value, code, labels, break_stack);
             code.push(Instruction::StoreThroughImmutable);
         }
+        AST::Cast { target, expr } => {
+            compile(*expr, code, labels, break_stack);
+            code.push(Instruction::Cast(target));
+        }
     }
 }
 pub fn compile_module(

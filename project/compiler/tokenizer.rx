@@ -27,13 +27,13 @@ func tokenize(src) {
             i = di;
         }
         else if is_digit(c) {
-            val = int_to_char(c);
+            val = digit_to_int(c);
             i = i + 1;
 
             loop {
                 if i >= src { break; }
                 if !is_digit(src[i]) { break; }
-                val = val * 10 + (int_to_char(src[i]));
+                val = val * 10 + (digit_to_int(src[i]));
                 i = i + 1;
             }
 
@@ -59,7 +59,7 @@ func tokenize(src) {
             r.tokens[r.len] = t;
             r.len = r.len + 1;
             i = di;
-        }
+            }
 
         else {
             println "error: unknown character";
@@ -68,4 +68,18 @@ func tokenize(src) {
     }
 
     return r;
+}
+func print_token(t) {
+    if t.kind == TK_Number {
+        println t.ival;
+    }
+    else if t.kind == TK_Add {
+        println "+";
+    }
+    else if t.kind == TK_Sub {
+        println "-";
+    }
+    else {
+        println "Could not print symbol";
+    }
 }

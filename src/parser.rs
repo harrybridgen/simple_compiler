@@ -111,6 +111,36 @@ impl Parser {
     }
 
     fn parse_unary(&mut self) -> AST {
+        if matches!(self.peek(), Some(Token::LParen)) {
+            let save = self.index;
+            self.next();
+
+            if let Some(Token::Ident(name)) = self.peek() {
+                let target = match name.as_str() {
+                    "int" => Some(crate::grammar::CastType::Int),
+                    "char" => Some(crate::grammar::CastType::Char),
+                    _ => None,
+                };
+
+                if let Some(target) = target {
+                    self.next();
+
+                    if !matches!(self.peek(), Some(Token::RParen)) {
+                        panic!("expected ')' after cast");
+                    }
+                    self.next();
+
+                    let expr = self.parse_unary();
+                    return AST::Cast {
+                        target,
+                        expr: Box::new(expr),
+                    };
+                }
+            }
+
+            self.index = save;
+        }
+
         match self.peek() {
             Some(Token::Sub) => {
                 self.next();

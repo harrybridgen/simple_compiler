@@ -1,14 +1,24 @@
 import compiler.tokenizer;
 import compiler.parser;
 
-src := "2+6-2";
+src := "2+3+8-9";
 
 func main() {
     lexer := tokenize(src);
+
+    i = 0;
+    loop {
+        if i >= lexer.len { break; }
+
+        t := lexer.tokens[i];
+        print_token(t);
+
+        i = i + 1;
+    }
+
+    println '=';
+
     parser := new_parser(lexer.tokens, lexer.len);
     result := parse_expr(parser);
-    
-    print src;
-    print " = ";
     println result;
 }

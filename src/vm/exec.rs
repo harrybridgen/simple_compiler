@@ -1,5 +1,5 @@
 use super::VM;
-use crate::grammar::{AST, Instruction, Type};
+use crate::grammar::{AST, CastType, Instruction, Type};
 
 impl VM {
     pub fn run(&mut self) {
@@ -116,6 +116,22 @@ impl VM {
                         self.import_module(path);
                     }
                 }
+                Instruction::Cast(target) => {
+                    let v = self.pop();
+                    match target {
+                        CastType::Int => {
+                            let n = self.as_int(v);
+                            self.stack.push(Type::Integer(n));
+                        }
+                        CastType::Char => {
+                            let n = self.as_int(v);
+                            if n < 0 || n > 0x10FFFF {
+                                panic!("invalid char code {}", n);
+                            }
+                            self.stack.push(Type::Char(n as u32));
+                        }
+                    }
+                }
             }
 
             self.pointer += 1;
@@ -210,32 +226,32 @@ impl VM {
     }
 
     fn add_values(&mut self, lhs: Type, rhs: Type) -> Type {
-        match (self.force(lhs), self.force(rhs)) {
-            (Type::Char(c), Type::Integer(n)) | (Type::Integer(n), Type::Char(c)) => {
-                Type::Char((c as i32 + n) as u32)
-            }
-            (Type::Char(a), Type::Char(b)) => Type::Char((a + b) as u32),
-            (a, b) => Type::Integer(self.as_int(a) + self.as_int(b)),
-        }
+        let lhs = self.force(lhs);
+        let rhs = self.force(rhs);
+
+        let a = self.as_int(lhs);
+        let b = self.as_int(rhs);
+
+        Type::Integer(a + b)
     }
 
     fn sub_values(&mut self, lhs: Type, rhs: Type) -> Type {
-        match (self.force(lhs), self.force(rhs)) {
-            (Type::Char(c), Type::Integer(n)) | (Type::Integer(n), Type::Char(c)) => {
-                Type::Char((c as i32 - n) as u32)
-            }
-            (Type::Char(a), Type::Char(b)) => Type::Char((a - b) as u32),
-            (a, b) => Type::Integer(self.as_int(a) - self.as_int(b)),
-        }
+        let lhs = self.force(lhs);
+        let rhs = self.force(rhs);
+
+        let a = self.as_int(lhs);
+        let b = self.as_int(rhs);
+
+        Type::Integer(a - b)
     }
 
     fn mod_values(&mut self, lhs: Type, rhs: Type) -> Type {
-        match (self.force(lhs), self.force(rhs)) {
-            (Type::Char(c), Type::Integer(n)) | (Type::Integer(n), Type::Char(c)) => {
-                Type::Char((c as i32 % n) as u32)
-            }
-            (Type::Char(a), Type::Char(b)) => Type::Char(a % b),
-            (a, b) => Type::Integer(self.as_int(a) % self.as_int(b)),
-        }
+        let lhs = self.force(lhs);
+        let rhs = self.force(rhs);
+
+        let a = self.as_int(lhs);
+        let b = self.as_int(rhs);
+
+        Type::Integer(a % b)
     }
 }

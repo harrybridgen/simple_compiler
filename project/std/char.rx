@@ -1,11 +1,11 @@
 func is_digit(c) {
-    return c >= '0' && c <= '9';
+    return (int)c >= (int)'0' && (int)c <= (int)'9';
 }
 
 func is_alpha(c) {
-    return (c >= 'a' && c <= 'z') ||
-           (c >= 'A' && c <= 'Z') ||
-           c == '_';
+    return ((int)c >= (int)'a' && (int)c <= (int)'z') ||
+           ((int)c >= (int)'A' && (int)c <= (int)'Z') ||
+           (int)c == (int)'_';
 }
 
 func is_alnum(c) {
@@ -13,40 +13,41 @@ func is_alnum(c) {
 }
 
 func is_space(c) {
-    return c == ' ' || c == '\n' || c == '\t' || c == '\r';
+    return (int)c == (int)' '  ||
+           (int)c == (int)'\n' ||
+           (int)c == (int)'\t' ||
+           (int)c == (int)'\r';
 }
 
 func is_lower(c) {
-    return c >= 'a' && c <= 'z';
+    return (int)c >= (int)'a' && (int)c <= (int)'z';
 }
 
 func is_upper(c) {
-    return c >= 'A' && c <= 'Z';
+    return (int)c >= (int)'A' && (int)c <= (int)'Z';
 }
 
 func to_lower(c) {
     if is_upper(c) {
-        return c + ('a' - 'A');
+        return (char)((int)c + ((int)'a' - (int)'A'));
     }
     return c;
 }
 
 func to_upper(c) {
     if is_lower(c) {
-        return c - ('a' - 'A');
+        return (char)((int)c - ((int)'a' - (int)'A'));
     }
     return c;
 }
 
-# NOT STABLE #
 func digit_to_int(c) {
-    if is_digit(c) == 1 {
+    if !is_digit(c) {
         println "digit_to_int: not a digit";
     }
-    return c - '0';
+    return (int)c - (int)'0';
 }
 
-# NOT STABLE #
 func int_to_char(n) {
-    return n + 0;
+    return (char)n;
 }
