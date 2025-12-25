@@ -1,3 +1,2 @@
-func main(){
-    println "Hello Reactive";
+func main() {
 }

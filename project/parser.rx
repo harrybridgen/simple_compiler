@@ -31,13 +31,13 @@ func tokenize(src) {
         }
         else {
             if is_digit(c) {
-                val = to_char(c);
+                val = int_to_char(c);
                 i = i + 1;
 
                 loop {
                     if i >= src { break; }
                     if is_digit(src[i]) == 0 { break; }
-                    val = val * 10 + (to_char(src[i]));
+                    val = val * 10 + (int_to_char(src[i]));
                     i = i + 1;
                 }
 
@@ -106,7 +106,7 @@ func parse_expr(p) {
         if peek(p) == TK_Add {
             advance(p);
             rhs = parse_number(p);
-            val = to_int(value + rhs);
+            val = digit_to_int(value + rhs);
         }
         else {
             break;
