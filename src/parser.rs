@@ -111,15 +111,23 @@ impl Parser {
     }
 
     fn parse_unary(&mut self) -> AST {
-        if matches!(self.peek(), Some(Token::Sub)) {
-            self.next();
-            AST::Operation(
-                Box::new(AST::Number(0)),
-                Operator::Subtraction,
-                Box::new(self.parse_unary()),
-            )
-        } else {
-            self.parse_postfix()
+        match self.peek() {
+            Some(Token::Sub) => {
+                self.next();
+                AST::Operation(
+                    Box::new(AST::Number(0)),
+                    Operator::Subtraction,
+                    Box::new(self.parse_unary()),
+                )
+            }
+
+            Some(Token::Not) => {
+                self.next();
+                let expr = self.parse_unary();
+                AST::Operation(Box::new(expr), Operator::Equal, Box::new(AST::Number(0)))
+            }
+
+            _ => self.parse_postfix(),
         }
     }
 
@@ -225,14 +233,22 @@ impl Parser {
 
     fn parse_if(&mut self) -> AST {
         self.next();
+
         let cond = self.parse_ternary();
         let then_block = self.parse_block();
+
         let else_block = if matches!(self.peek(), Some(Token::Else)) {
             self.next();
-            self.parse_block()
+
+            if matches!(self.peek(), Some(Token::If)) {
+                vec![self.parse_if()]
+            } else {
+                self.parse_block()
+            }
         } else {
             Vec::new()
         };
+
         AST::IfElse(Box::new(cond), then_block, else_block)
     }
 

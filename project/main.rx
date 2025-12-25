@@ -1,3 +1,4 @@
-func main(){
-	println "Hello Reactive";
+import std.maths;
+func main() {
+    println !(iseven(2) && iseven(3)) || iseven(10);
 }

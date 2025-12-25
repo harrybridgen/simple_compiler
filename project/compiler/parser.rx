@@ -35,16 +35,20 @@ func parse_expr(p) {
     
     loop {
         if p.pos >= p.len { break; }
-
         if peek(p) == TK_Add {
             advance(p);
             rhs = parse_number(p);
-            val = digit_to_int(value + rhs);
+            value = value + rhs;
+        }
+        else if peek(p) == TK_Sub {
+            advance(p);
+            rhs = parse_number(p);
+            value = value - rhs;
         }
         else {
             break;
         }
     }
 
-    return val;
+    return value;
 }
