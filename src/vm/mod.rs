@@ -1,11 +1,10 @@
 pub mod call;
-pub mod debug;
 pub mod env;
 pub mod exec;
 pub mod reactive;
 pub mod runtime;
 
-use crate::grammar::{Instruction, StructFieldInit, StructInstance, Type};
+use crate::grammar::{CompiledStructFieldInit, Instruction, StructInstance, Type};
 use std::collections::{HashMap, HashSet};
 struct CallFrame {
     code: Vec<Instruction>,
@@ -36,7 +35,7 @@ pub struct VM {
     labels: HashMap<String, usize>,
 
     // Runtime heaps
-    struct_defs: HashMap<String, Vec<(String, Option<StructFieldInit>)>>,
+    struct_defs: HashMap<String, Vec<(String, Option<CompiledStructFieldInit>)>>,
     heap: Vec<StructInstance>,
     array_heap: Vec<Vec<Type>>,
     array_immutables: Vec<HashSet<usize>>,

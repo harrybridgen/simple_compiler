@@ -35,7 +35,7 @@ impl VM {
     // =========================================================
     pub(crate) fn call_function(&mut self, f: Type, args: Vec<Type>) -> Type {
         match f {
-            Type::Function { params, body } => {
+            Type::Function { params, code } => {
                 // Build immutable stack: global + params
                 let global_immutables = self.immutable_stack[0].clone();
                 let mut imm_stack = vec![global_immutables, HashMap::new()];
@@ -48,16 +48,6 @@ impl VM {
                 }
 
                 let local_env = Some(HashMap::new());
-
-                // Compile function body
-                let mut code = Vec::new();
-                let mut lg = crate::compiler::LabelGenerator::new();
-                let mut break_stack = Vec::new();
-
-                for stmt in body {
-                    crate::compiler::compile(stmt, &mut code, &mut lg, &mut break_stack);
-                }
-                code.push(Instruction::Return);
 
                 let labels = Self::build_labels(&code);
 

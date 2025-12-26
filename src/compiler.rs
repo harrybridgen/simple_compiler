@@ -1,5 +1,8 @@
-use crate::grammar::{AST, FieldAssignKind, Instruction, Operator};
-
+use crate::grammar::{
+    AST, CompiledStructFieldInit, FieldAssignKind, Instruction, Operator, ReactiveExpr,
+    StructFieldInit,
+};
+use std::collections::HashSet;
 pub fn compile(
     ast: AST,
     code: &mut Vec<Instruction>,
@@ -77,7 +80,8 @@ pub fn compile(
         }
 
         AST::ReactiveAssign(name, expr) => {
-            code.push(Instruction::StoreReactive(name, expr));
+            let reactive = compile_reactive_expr(*expr);
+            code.push(Instruction::StoreReactive(name, reactive));
         }
 
         AST::AssignTarget(target, value) => {
@@ -88,7 +92,8 @@ pub fn compile(
 
         AST::ReactiveAssignTarget(target, value) => {
             compile_lvalue(*target, code, labels, break_stack);
-            code.push(Instruction::StoreThroughReactive(value));
+            let reactive = compile_reactive_expr(*value);
+            code.push(Instruction::StoreThroughReactive(reactive));
         }
 
         AST::FieldAssign {
@@ -104,7 +109,8 @@ pub fn compile(
             }
             FieldAssignKind::Reactive => {
                 compile(*base, code, labels, break_stack);
-                code.push(Instruction::FieldSetReactive(field, value));
+                let reactive = compile_reactive_expr(*value);
+                code.push(Instruction::FieldSetReactive(field, reactive));
             }
             FieldAssignKind::Immutable => {
                 panic!("immutable field assignment not allowed");
@@ -180,11 +186,13 @@ pub fn compile(
 
         // ---------- definitions ----------
         AST::FuncDef { name, params, body } => {
-            code.push(Instruction::StoreFunction(name, params, body));
+            let func_code = compile_function_body(body);
+            code.push(Instruction::StoreFunction(name, params, func_code));
         }
 
         AST::StructDef { name, fields } => {
-            code.push(Instruction::StoreStruct(name, fields));
+            let compiled_fields = compile_struct_fields(fields);
+            code.push(Instruction::StoreStruct(name, compiled_fields));
         }
 
         AST::StructNew(name) => {
@@ -236,6 +244,126 @@ pub fn compile(
         }
     }
 }
+
+fn compile_function_body(body: Vec<AST>) -> Vec<Instruction> {
+    let mut code = Vec::new();
+    let mut labels = LabelGenerator::new();
+    let mut break_stack = Vec::new();
+
+    for stmt in body {
+        compile(stmt, &mut code, &mut labels, &mut break_stack);
+    }
+
+    code.push(Instruction::Return);
+    code
+}
+
+fn compile_struct_fields(
+    fields: Vec<(String, Option<StructFieldInit>)>,
+) -> Vec<(String, Option<CompiledStructFieldInit>)> {
+    fields
+        .into_iter()
+        .map(|(name, init)| {
+            let compiled_init = match init {
+                Some(StructFieldInit::Mutable(ast)) => {
+                    Some(CompiledStructFieldInit::Mutable(compile_expr_to_code(ast)))
+                }
+                Some(StructFieldInit::Immutable(ast)) => Some(CompiledStructFieldInit::Immutable(
+                    compile_expr_to_code(ast),
+                )),
+                Some(StructFieldInit::Reactive(ast)) => Some(CompiledStructFieldInit::Reactive(
+                    compile_reactive_expr(ast),
+                )),
+                None => None,
+            };
+            (name, compiled_init)
+        })
+        .collect()
+}
+
+fn compile_expr_to_code(ast: AST) -> Vec<Instruction> {
+    let mut code = Vec::new();
+    let mut labels = LabelGenerator::new();
+    let mut break_stack = Vec::new();
+
+    compile(ast, &mut code, &mut labels, &mut break_stack);
+    code.push(Instruction::Return);
+    code
+}
+
+fn compile_reactive_expr(ast: AST) -> ReactiveExpr {
+    let mut names = HashSet::new();
+    collect_free_vars(&ast, &mut names);
+
+    let mut captures: Vec<String> = names.into_iter().collect();
+    captures.sort();
+
+    let code = compile_expr_to_code(ast);
+
+    ReactiveExpr { code, captures }
+}
+
+fn collect_free_vars(ast: &AST, out: &mut HashSet<String>) {
+    match ast {
+        AST::Var(n) => {
+            out.insert(n.clone());
+        }
+        AST::Operation(l, _, r) => {
+            collect_free_vars(l, out);
+            collect_free_vars(r, out);
+        }
+        AST::Index(b, i) => {
+            collect_free_vars(b, out);
+            collect_free_vars(i, out);
+        }
+        AST::FieldAccess(b, _) => {
+            collect_free_vars(b, out);
+        }
+        AST::Ternary {
+            cond,
+            then_expr,
+            else_expr,
+        } => {
+            collect_free_vars(cond, out);
+            collect_free_vars(then_expr, out);
+            collect_free_vars(else_expr, out);
+        }
+        AST::Call { args, .. } => {
+            for a in args {
+                collect_free_vars(a, out);
+            }
+        }
+        AST::ArrayNew(size) => collect_free_vars(size, out),
+        AST::Assign(_, rhs)
+        | AST::ImmutableAssign(_, rhs)
+        | AST::ReactiveAssign(_, rhs)
+        | AST::ImmutableAssignTarget(_, rhs) => collect_free_vars(rhs, out),
+        AST::AssignTarget(target, value) | AST::ReactiveAssignTarget(target, value) => {
+            collect_free_vars(target, out);
+            collect_free_vars(value, out);
+        }
+        AST::FieldAssign { base, value, .. } => {
+            collect_free_vars(base, out);
+            collect_free_vars(value, out);
+        }
+        AST::Cast { expr, .. } => collect_free_vars(expr, out),
+        AST::Number(_)
+        | AST::Char(_)
+        | AST::StringLiteral(_)
+        | AST::Program(_)
+        | AST::IfElse(_, _, _)
+        | AST::Loop(_)
+        | AST::Break
+        | AST::Return(_)
+        | AST::Print(_)
+        | AST::Println(_)
+        | AST::FuncDef { .. }
+        | AST::StructDef { .. }
+        | AST::StructNew(_)
+        | AST::Import(_) => {}
+    }
+}
+
 pub fn compile_module(
     ast: AST,
     code: &mut Vec<Instruction>,

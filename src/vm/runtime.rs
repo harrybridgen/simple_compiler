@@ -1,5 +1,7 @@
 use super::VM;
-use crate::grammar::{AST, LValue, StructFieldInit, StructInstance, Type};
+use crate::grammar::{
+    CompiledStructFieldInit, Instruction, LValue, ReactiveExpr, StructInstance, Type,
+};
 use std::collections::{HashMap, HashSet};
 
 impl VM {
@@ -152,14 +154,14 @@ impl VM {
         }
     }
 
-    pub(crate) fn exec_store_index_reactive(&mut self, name: String, ast: Box<AST>) {
+    pub(crate) fn exec_store_index_reactive(&mut self, name: String, expr: ReactiveExpr) {
         self.ensure_mutable_binding(&name);
 
         let idx_val = self.pop();
         let idx = self.as_usize_nonneg(idx_val, "array index");
 
-        let frozen = self.freeze_ast(ast);
-        let captured = self.capture_immutables_for_ast(&frozen);
+        let captured = self.capture_immutables(&expr.captures);
+        let value = Type::LazyValue(expr, captured);
 
         let target = self
             .lookup_var(&name)
@@ -174,7 +176,7 @@ impl VM {
                 if idx >= len {
                     panic!("reactive array assignment out of bounds: index {idx}, length {len}");
                 }
-                self.array_heap[id][idx] = Type::LazyValue(frozen, captured);
+                self.array_heap[id][idx] = value;
             }
             other => panic!("type error: StoreIndexReactive on non-array {:?}", other),
         }
@@ -333,11 +335,11 @@ impl VM {
         }
     }
 
-    pub(crate) fn exec_store_through_reactive(&mut self, ast: Box<AST>) {
+    pub(crate) fn exec_store_through_reactive(&mut self, expr: ReactiveExpr) {
         let target = self.pop();
 
-        let frozen = self.freeze_ast(ast);
-        let captured = self.capture_immutables_for_ast(&frozen);
+        let captured = self.capture_immutables(&expr.captures);
+        let value = Type::LazyValue(expr, captured);
 
         match target {
             Type::LValue(LValue::ArrayElem { array_id, index }) => {
@@ -350,7 +352,7 @@ impl VM {
                     panic!("reactive array assignment out of bounds");
                 }
 
-                self.array_heap[array_id][index] = Type::LazyValue(frozen, captured);
+                self.array_heap[array_id][index] = value;
             }
 
             Type::LValue(LValue::StructField { struct_id, field }) => {
@@ -365,7 +367,7 @@ impl VM {
                 }
 
                 inst.immutables.insert(field.clone());
-                inst.fields.insert(field, Type::LazyValue(frozen, captured));
+                inst.fields.insert(field, value);
             }
 
             other => panic!(
@@ -462,7 +464,7 @@ impl VM {
         self.heap[struct_id].fields.insert(field, stored);
     }
 
-    pub(crate) fn exec_field_set_reactive(&mut self, field: String, ast: Box<AST>) {
+    pub(crate) fn exec_field_set_reactive(&mut self, field: String, expr: ReactiveExpr) {
         let obj = self.pop();
 
         match self.force(obj) {
@@ -470,11 +472,10 @@ impl VM {
                 if self.heap[id].immutables.contains(&field) {
                     panic!("cannot reactively assign to immutable field `{}`", field);
                 }
-                let frozen = self.freeze_ast(ast);
-                let captured = self.capture_immutables_for_ast(&frozen);
+                let captured = self.capture_immutables(&expr.captures);
                 self.heap[id]
                     .fields
-                    .insert(field, Type::LazyValue(frozen, captured));
+                    .insert(field, Type::LazyValue(expr, captured));
             }
             other => panic!("type error: FieldSetReactive on non-struct {:?}", other),
         }
@@ -482,7 +483,7 @@ impl VM {
 
     pub(crate) fn instantiate_struct(
         &mut self,
-        fields: Vec<(String, Option<StructFieldInit>)>,
+        fields: Vec<(String, Option<CompiledStructFieldInit>)>,
     ) -> Type {
         let mut map = HashMap::new();
         let mut imm = HashSet::new();
@@ -490,20 +491,17 @@ impl VM {
         // Initialize all declared fields
         for (name, init) in &fields {
             match init {
-                Some(StructFieldInit::Immutable(_)) => {
+                Some(CompiledStructFieldInit::Immutable(_)) => {
                     // immutable-with-initializer: the initializer will run later, but we want the slot
                     // to exist and be considered immutable from the start.
                     imm.insert(name.clone());
                     map.insert(name.clone(), Type::Uninitialized);
                 }
-                Some(StructFieldInit::Reactive(_)) => {
+                Some(CompiledStructFieldInit::Reactive(_)) => {
                     // reactive initializer stored later, slot exists now
-                    map.insert(
-                        name.clone(),
-                        Type::LazyValue(Box::new(AST::Number(0)), HashMap::new()),
-                    );
+                    map.insert(name.clone(), Type::Uninitialized);
                 }
-                Some(StructFieldInit::Mutable(_)) => {
+                Some(CompiledStructFieldInit::Mutable(_)) => {
                     // will be initialized later
                     map.insert(name.clone(), Type::Uninitialized);
                 }
@@ -524,12 +522,10 @@ impl VM {
         for (name, init) in fields {
             if let Some(init) = init {
                 let value = match init {
-                    StructFieldInit::Mutable(ast) | StructFieldInit::Immutable(ast) => {
-                        self.eval_reactive_field_in_struct(id, ast)
-                    }
-                    StructFieldInit::Reactive(ast) => {
-                        let frozen = Box::new(ast);
-                        Type::LazyValue(frozen, HashMap::new())
+                    CompiledStructFieldInit::Mutable(code)
+                    | CompiledStructFieldInit::Immutable(code) => self.eval_struct_code(id, code),
+                    CompiledStructFieldInit::Reactive(expr) => {
+                        Type::LazyValue(expr, HashMap::new())
                     }
                 };
 
@@ -542,7 +538,7 @@ impl VM {
         Type::StructRef(id)
     }
 
-    pub(crate) fn eval_reactive_field_in_struct(&mut self, struct_id: usize, ast: AST) -> Type {
+    pub(crate) fn eval_struct_code(&mut self, struct_id: usize, code: Vec<Instruction>) -> Type {
         // Each evaluation creates a fresh immutable frame and binds all fields as LValues.
         self.immutable_stack.push(HashMap::new());
 
@@ -563,7 +559,36 @@ impl VM {
             }
         }
 
-        let result = self.eval_value(ast);
+        let result = self.run_reactive_code(code);
+        self.immutable_stack.pop();
+        result
+    }
+
+    pub(crate) fn eval_reactive_field_in_struct(
+        &mut self,
+        struct_id: usize,
+        expr: &ReactiveExpr,
+    ) -> Type {
+        self.immutable_stack.push(HashMap::new());
+
+        {
+            let scope = self
+                .immutable_stack
+                .last_mut()
+                .expect("internal error: no immutable scope for struct eval");
+            let keys: Vec<String> = self.heap[struct_id].fields.keys().cloned().collect();
+            for key in keys {
+                scope.insert(
+                    key.clone(),
+                    Type::LValue(LValue::StructField {
+                        struct_id,
+                        field: key,
+                    }),
+                );
+            }
+        }
+
+        let result = self.run_reactive_code(expr.code.clone());
         self.immutable_stack.pop();
         result
     }
@@ -584,9 +609,9 @@ impl VM {
                 self.heap.push(inst);
                 Type::StructRef(new_id)
             }
-            Type::LazyValue(ast, captured) => Type::LazyValue(ast, captured),
+            Type::LazyValue(expr, captured) => Type::LazyValue(expr, captured),
             Type::Integer(n) => Type::Integer(n),
-            Type::Function { params, body } => Type::Function { params, body },
+            Type::Function { params, code } => Type::Function { params, code },
             Type::LValue(_) => panic!("cannot clone lvalue"),
             Type::Char(c) => Type::Char(c),
             Type::Uninitialized => Type::Uninitialized,

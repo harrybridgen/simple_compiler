@@ -1,5 +1,5 @@
 use super::VM;
-use crate::grammar::{AST, CastType, Instruction, Type};
+use crate::grammar::{AST, CastType, Instruction, ReactiveExpr, Type};
 
 impl VM {
     pub fn run(&mut self) {
@@ -20,7 +20,7 @@ impl VM {
                 }
                 Instruction::Store(name) => self.exec_store(name),
                 Instruction::StoreImmutable(name) => self.exec_store_immutable(name),
-                Instruction::StoreReactive(name, ast) => self.exec_store_reactive(name, ast),
+                Instruction::StoreReactive(name, expr) => self.exec_store_reactive(name, expr),
                 Instruction::Add => self.exec_add(),
                 Instruction::Sub => self.exec_sub(),
                 Instruction::Mul => self.exec_mul(),
@@ -45,12 +45,12 @@ impl VM {
                 Instruction::ArrayNew => self.exec_array_new(),
                 Instruction::ArrayGet => self.exec_array_get(),
                 Instruction::StoreIndex(name) => self.exec_store_index(name),
-                Instruction::StoreIndexReactive(name, ast) => {
-                    self.exec_store_index_reactive(name, ast)
+                Instruction::StoreIndexReactive(name, expr) => {
+                    self.exec_store_index_reactive(name, expr)
                 }
                 Instruction::StoreFunction(name, params, body) => {
                     self.global_env
-                        .insert(name, Type::Function { params, body });
+                        .insert(name, Type::Function { params, code: body });
                 }
                 Instruction::Call(name, argc) => self.exec_call(name, argc),
                 Instruction::StoreStruct(name, fields) => {
@@ -67,8 +67,8 @@ impl VM {
                 }
                 Instruction::FieldGet(field) => self.exec_field_get(field),
                 Instruction::FieldSet(field) => self.exec_field_set(field),
-                Instruction::FieldSetReactive(field, ast) => {
-                    self.exec_field_set_reactive(field, ast)
+                Instruction::FieldSetReactive(field, expr) => {
+                    self.exec_field_set_reactive(field, expr)
                 }
                 Instruction::PushImmutableContext => {
                     self.immutable_stack.push(std::collections::HashMap::new());
@@ -107,7 +107,7 @@ impl VM {
                 Instruction::ArrayLValue => self.exec_array_lvalue(),
                 Instruction::FieldLValue(field) => self.exec_field_lvalue(field),
                 Instruction::StoreThrough => self.exec_store_through(),
-                Instruction::StoreThroughReactive(ast) => self.exec_store_through_reactive(ast),
+                Instruction::StoreThroughReactive(expr) => self.exec_store_through_reactive(expr),
                 Instruction::StoreThroughImmutable => self.store_through_immutable(),
                 Instruction::Import(path) => {
                     let module_name = path.join(".");
@@ -166,18 +166,17 @@ impl VM {
         scope.insert(name, v);
     }
 
-    fn exec_store_reactive(&mut self, name: String, ast: Box<AST>) {
+    fn exec_store_reactive(&mut self, name: String, expr: ReactiveExpr) {
         self.ensure_mutable_binding(&name);
-        let frozen = self.freeze_ast(ast);
-        let captured = self.capture_immutables_for_ast(&frozen);
+        let captured = self.capture_immutables(&expr.captures);
+        let value = Type::LazyValue(expr, captured);
 
         match &mut self.local_env {
             Some(env) => {
-                env.insert(name, Type::LazyValue(frozen, captured));
+                env.insert(name, value);
             }
             None => {
-                self.global_env
-                    .insert(name, Type::LazyValue(frozen, captured));
+                self.global_env.insert(name, value);
             }
         }
     }

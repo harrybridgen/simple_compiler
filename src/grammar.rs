@@ -61,37 +61,6 @@ pub enum Token {
 }
 
 //
-// ----------------------------- RUNTIME TYPES -----------------------------
-//
-
-#[derive(Debug, Clone)]
-pub enum Type {
-    Integer(i32),
-    Char(u32),
-
-    ArrayRef(usize),
-    StructRef(usize),
-
-    Function { params: Vec<String>, body: Vec<AST> },
-
-    LazyValue(Box<AST>, HashMap<String, Type>),
-    LValue(LValue),
-    Uninitialized,
-}
-
-#[derive(Debug, Clone)]
-pub enum LValue {
-    ArrayElem { array_id: usize, index: usize },
-    StructField { struct_id: usize, field: String },
-}
-
-#[derive(Debug, Clone)]
-pub struct StructInstance {
-    pub fields: HashMap<String, Type>,
-    pub immutables: HashSet<String>,
-}
-
-//
 // ----------------------------- AST -----------------------------
 //
 #[derive(Debug, Clone)]
@@ -178,7 +147,12 @@ pub enum AST {
 //
 // ----------------------------- STRUCT FIELDS -----------------------------
 //
-
+#[derive(Debug, Clone)]
+pub enum CompiledStructFieldInit {
+    Mutable(Vec<Instruction>),
+    Immutable(Vec<Instruction>),
+    Reactive(ReactiveExpr),
+}
 #[derive(Debug, Clone)]
 pub enum FieldAssignKind {
     Normal,
@@ -215,6 +189,49 @@ pub enum Operator {
     And,
     Or,
 }
+//
+// ----------------------------- REACTIVE HELPERS -----------------------------
+//
+
+#[derive(Debug, Clone)]
+pub struct ReactiveExpr {
+    pub code: Vec<Instruction>,
+    pub captures: Vec<String>,
+}
+
+//
+// ----------------------------- RUNTIME TYPES -----------------------------
+//
+
+#[derive(Debug, Clone)]
+pub enum Type {
+    Integer(i32),
+    Char(u32),
+
+    ArrayRef(usize),
+    StructRef(usize),
+
+    Function {
+        params: Vec<String>,
+        code: Vec<Instruction>,
+    },
+
+    LazyValue(ReactiveExpr, HashMap<String, Type>),
+    LValue(LValue),
+    Uninitialized,
+}
+
+#[derive(Debug, Clone)]
+pub enum LValue {
+    ArrayElem { array_id: usize, index: usize },
+    StructField { struct_id: usize, field: String },
+}
+
+#[derive(Debug, Clone)]
+pub struct StructInstance {
+    pub fields: HashMap<String, Type>,
+    pub immutables: HashSet<String>,
+}
 
 //
 // ----------------------------- BYTECODE -----------------------------
@@ -230,7 +247,7 @@ pub enum Instruction {
     // variable storage
     Store(String),
     StoreImmutable(String),
-    StoreReactive(String, Box<AST>),
+    StoreReactive(String, ReactiveExpr),
 
     // arithmetic
     Add,
@@ -260,23 +277,23 @@ pub enum Instruction {
     ArrayGet,
     ArrayLValue,
     StoreIndex(String),
-    StoreIndexReactive(String, Box<AST>),
+    StoreIndexReactive(String, ReactiveExpr),
 
     // structs
-    StoreStruct(String, Vec<(String, Option<StructFieldInit>)>),
+    StoreStruct(String, Vec<(String, Option<CompiledStructFieldInit>)>),
     NewStruct(String),
     FieldGet(String),
     FieldSet(String),
-    FieldSetReactive(String, Box<AST>),
+    FieldSetReactive(String, ReactiveExpr),
     FieldLValue(String),
 
     // indirect stores
     StoreThrough,
-    StoreThroughReactive(Box<AST>),
+    StoreThroughReactive(ReactiveExpr),
     StoreThroughImmutable,
 
     // functions
-    StoreFunction(String, Vec<String>, Vec<AST>),
+    StoreFunction(String, Vec<String>, Vec<Instruction>),
     Call(String, usize),
 
     // immutable scopes
