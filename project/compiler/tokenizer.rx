@@ -28,36 +28,22 @@ func tokenize(src) {
         }
         else if is_digit(c) {
             val = digit_to_int(c);
-            i = i + 1;
+            i = di;
 
             loop {
                 if i >= src { break; }
                 if !is_digit(src[i]) { break; }
                 val = val * 10 + (digit_to_int(src[i]));
-                i = i + 1;
+                i = di;
             }
-
-            t := struct Token;
-            t.kind = TK_Number;
-            t.ival = val;
-
-            r.tokens[r.len] = t;
-            r.len = r.len + 1;
+            t := tokenNum(TK_Number, r, val)
         }
         else if c == '+' {
-            t := struct Token;
-            t.kind = TK_Add;
-
-            r.tokens[r.len] = t;
-            r.len = r.len + 1;
+            t := tokenOper(TK_Add, r);
             i = di;
         }
         else if c == '-' {
-            t := struct Token;
-            t.kind = TK_Sub;
-
-            r.tokens[r.len] = t;
-            r.len = r.len + 1;
+            t := tokenOper(TK_Sub, r);
             i = di;
         }
 
@@ -69,6 +55,24 @@ func tokenize(src) {
 
     return r;
 }
+
+func tokenOper(kind, r){
+    t := struct Token;
+    t.kind = kind;
+
+    r.tokens[r.len] = t;
+    r.len = r.len + 1;
+}
+
+func tokenNum(kind, r, val){
+    t := struct Token;
+    t.kind = kind;
+    t.ival = val;
+
+    r.tokens[r.len] = t;
+    r.len = r.len + 1;
+}
+
 func print_token(t) {
     if t.kind == TK_Number {
         println t.ival;
