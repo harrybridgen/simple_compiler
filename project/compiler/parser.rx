@@ -55,18 +55,3 @@ func parse_expr(p) {
     return expr;
 }
 
-func nodeOper(kind, left, right) {
-    n := struct AST;
-    n.kind = kind;
-    n.left = left;
-    n.right = right;
-    return n;
-}
-
-func nodeNum(val) {
-    n := struct AST;
-    n.kind = AST_Number;
-    n.literal = val;
-    return n;
-}
-
