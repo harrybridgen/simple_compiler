@@ -7,7 +7,16 @@ pub mod runtime;
 
 use crate::grammar::{Instruction, StructFieldInit, StructInstance, Type};
 use std::collections::{HashMap, HashSet};
+struct CallFrame {
+    code: Vec<Instruction>,
+    labels: HashMap<String, usize>,
+    pointer: usize,
 
+    local_env: Option<HashMap<String, Type>>,
+    immutable_stack: Vec<HashMap<String, Type>>,
+
+    stack_base: usize,
+}
 pub struct VM {
     // Operand stack
     stack: Vec<Type>,
@@ -35,6 +44,9 @@ pub struct VM {
     // Module import memoization
     imported_modules: HashSet<String>,
 
+    // call stack
+    call_stack: Vec<CallFrame>,
+
     // Debugging
     debug: bool,
     debug_reactive_ctx: Vec<String>,
@@ -58,6 +70,7 @@ impl VM {
             imported_modules: HashSet::new(),
             debug: true,
             debug_reactive_ctx: Vec::new(),
+            call_stack: Vec::new(),
         }
     }
 

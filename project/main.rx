@@ -1,21 +1,13 @@
-
-
-
-struct Example {
-    y;
-    xx ;
-    sum ::= xx + y;
-}
-x := 10;
-func main(){
-
-    foo();
-
+func f(a) {
+    return a;
 }
 
-func foo(){
-    e = struct Example;
-    e.y = 1;
-    e.xx = x;
-    println e.sum;  # 11 #
+func main() {
+    y = 1;
+    x ::= f(y);
+
+    println x;   # 1 #
+
+    y = 2;
+    println x;   # 2 #
 }
