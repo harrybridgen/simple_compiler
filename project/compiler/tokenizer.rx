@@ -1,4 +1,5 @@
 import compiler.grammar;
+import std.char;
 
 MAX_TOKENS := 16;
 
