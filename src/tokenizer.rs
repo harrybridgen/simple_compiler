@@ -46,10 +46,6 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                     chars.next();
                     tokens.push(Token::Equal);
                 }
-                Some('>') => {
-                    chars.next();
-                    tokens.push(Token::Arrow);
-                }
                 _ => tokens.push(Token::Assign),
             },
 
@@ -144,7 +140,6 @@ fn read_ident(first: char, chars: &mut Peekable<Chars>) -> Token {
         "continue" => Token::Continue,
         "struct" => Token::Struct,
         "import" => Token::Import,
-        "match" => Token::Match,
         _ => Token::Ident(s),
     }
 }

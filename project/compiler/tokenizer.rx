@@ -5,6 +5,7 @@ struct Lexer {
     tokens;
     len = 0;
 }
+
 func tokenize(src) {
     r := struct Lexer;
     r.tokens := [(int) src];
@@ -17,67 +18,55 @@ func tokenize(src) {
 
         c := src[i];
 
-        match c {
-            ' ' => i = di;
-            '\t' => i = di;
-            '\n' => i = di;
+        if c == ' ' || c == '\t' || c == '\n' {
+            i = di;
+        }
 
-            '+' => {
-                tokenOper(TK_Add, r);
+        else if c == '+' {
+            tokenOper(TK_Add, r);
+            i = di;
+        }
+        else if c == '-' {
+            tokenOper(TK_Sub, r);
+            i = di;
+        }
+        else if c == '*' {
+            tokenOper(TK_Mul, r);
+            i = di;
+        }
+        else if c == '/' {
+            tokenOper(TK_Div, r);
+            i = di;
+        }
+        else if c == '(' {
+            tokenOper(TK_LParen, r);
+            i = di;
+        }
+        else if c == ')' {
+            tokenOper(TK_RParen, r);
+            i = di;
+        }
+
+        else if is_digit(c) {
+            val = digit_to_int(c);
+            i = di;
+
+            loop {
+                if i >= src { break; }
+                if !is_digit(src[i]) { break; }
+                val = val * 10 + digit_to_int(src[i]);
                 i = di;
             }
-
-            '-' => {
-                tokenOper(TK_Sub, r);
-                i = di;
-            }
-
-            '*' => {
-                tokenOper(TK_Mul, r);
-                i = di;
-            }
-
-            '/' => {
-                tokenOper(TK_Div, r);
-                i = di;
-            }
-
-            '(' => {
-                tokenOper(TK_LParen, r);
-                i = di;
-            }
-
-            ')' => {
-                tokenOper(TK_RParen, r);
-                i = di;
-            }
-
-            _ => {
-                if is_digit(c) {
-                    val = digit_to_int(c);
-                    i = di;
-
-                    loop {
-                        if i >= src { break; }
-                        if !is_digit(src[i]) { break; }
-                        val = val * 10 + digit_to_int(src[i]);
-                        i = di;
-                    }
-
-                    tokenNum(TK_Number, r, val);
-                }
-                else {
-                    print "error: unknown character";
-                    break;
-                }
-            }
+            tokenNum(TK_Number, r, val);
+        }
+        else {
+            print "error: unknown character";
+            break;
         }
     }
 
     return r;
 }
-
-
 
 func print_token(t) {
     if t.kind == TK_Number {
