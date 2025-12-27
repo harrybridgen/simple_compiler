@@ -1,5 +1,27 @@
-import std.char;
+import std.linkedlist;
 
-func main(){
+func main() {
+    l = list();
 
+    println l.empty;   # 1 #
+    println l.size;    # 0 #
+
+    push_front(l, 10);
+    push_front(l, 20);
+    push_front(l, 30);
+
+    println l.empty;   # 0 #
+    println l.size;    # 3 #
+
+    println peek_front(l);  # 30 #
+
+    x = pop_front(l);
+    println x;              # 30 #
+    println l.size;         # 2 #
+
+    println pop_front(l);   # 20 #
+    println pop_front(l);   # 10 #
+    println pop_front(l);   # 0 (empty) #
+
+    println l.empty;        # 1 #
 }
